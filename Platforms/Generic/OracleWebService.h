@@ -46,6 +46,7 @@ namespace OrthancStone
                                     const std::string& uri,
                                     Orthanc::IDynamicObject* payload)
     {
+
       oracle_.Submit(new WebServiceGetCommand(callback, parameters_, uri, payload));
     }
 

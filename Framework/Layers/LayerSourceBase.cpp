@@ -54,6 +54,10 @@ namespace OrthancStone
 
   void LayerSourceBase::NotifyGeometryReady()
   {
+    //new observers
+    SignalGeometryReady(*this);
+
+    //old observers
     observers_.Apply(*this, &IObserver::NotifyGeometryReady);
   }
     

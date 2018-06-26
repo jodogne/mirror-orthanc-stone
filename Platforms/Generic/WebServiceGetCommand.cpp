@@ -34,6 +34,7 @@ namespace OrthancStone
     uri_(uri),
     payload_(payload)
   {
+    //SignalSuccess.connect(boost::bind(&IWebService::ICallback::NotifySuccess, callback, _1, _2, _3, _4));
   }
 
 
@@ -50,7 +51,8 @@ namespace OrthancStone
   {
     if (success_)
     {
-      callback_.NotifySuccess(uri_, answer_.c_str(), answer_.size(), payload_.release());
+      SignalSuccess(uri_, answer_.c_str(), answer_.size(), payload_.release());
+      //callback_.NotifySuccess(uri_, answer_.c_str(), answer_.size(), payload_.release());
     }
     else
     {

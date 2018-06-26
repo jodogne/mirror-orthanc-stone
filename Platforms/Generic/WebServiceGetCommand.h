@@ -28,6 +28,7 @@
 #include <Core/WebServiceParameters.h>
 
 #include <memory>
+#include <boost/signals2.hpp>
 
 namespace OrthancStone
 {
@@ -50,5 +51,11 @@ namespace OrthancStone
     virtual void Execute();
 
     virtual void Commit();
+
+    boost::signals2::signal<void (const std::string& uri,
+                                  const void* answer,
+                                  size_t answerSize,
+                                  Orthanc::IDynamicObject* payload)> SignalSuccess;
+
   };
 }

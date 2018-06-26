@@ -109,6 +109,10 @@ namespace OrthancStone
             case 's':
               widget.SetDefaultView();
               break;
+            case 'n':
+              application_.NextImage(widget);
+              //widget.SetDefaultView();
+              break;
 
             default:
               break;
@@ -182,7 +186,12 @@ namespace OrthancStone
 
         mainLayout_->SetDefaultView();
       }
-      
+
+      void OnGeometryReady(const ILayerSource& source)
+      {
+        mainLayout_->SetDefaultView();
+      }
+
       virtual void NotifyGeometryError(const ILayerSource& source)
       {
       }
@@ -292,7 +301,8 @@ namespace OrthancStone
         // sources
         source_ = new OrthancFrameLayerSource(context_->GetWebService());
         source_->LoadFrame(instances_[currentInstanceIndex_], 0);
-        source_->Register(*this);
+//        source_->Register(*this);
+        source_->SignalGeometryReady.connect(boost::bind(&SimpleViewerApplication::OnGeometryReady, this, _1));
 
         mainViewport_->AddLayer(source_);
 
@@ -316,6 +326,19 @@ namespace OrthancStone
         AttachWidgetToWasmViewport("canvas2", mainViewport_);
       }
 #endif
+      void NextImage(WorldSceneWidget& widget) {
+        assert(context_);
+
+        currentInstanceIndex_ = (currentInstanceIndex_ + 1) % instances_.size();
+
+        std::auto_ptr<OrthancFrameLayerSource> layer
+            (new OrthancFrameLayerSource(context_->GetWebService()));
+        layer->LoadFrame(instances_[currentInstanceIndex_], 0);
+
+        mainViewport_->ReplaceLayer(0, layer.release());
+        //  source_->LoadFrame("45b7e6bc-168e8ed1-063dc08d-cffd6431-133a276a", 0);
+      }
+
     };
   }
 }

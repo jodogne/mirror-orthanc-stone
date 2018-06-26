@@ -23,6 +23,7 @@
 
 #include "ILayerSource.h"
 #include "../Toolbox/ObserversRegistry.h"
+#include <boost/signals2.hpp>
 
 namespace OrthancStone
 {
@@ -48,5 +49,6 @@ namespace OrthancStone
 
   public:
     virtual void Register(IObserver& observer);
+    boost::signals2::signal<void (const ILayerSource& source)> SignalGeometryReady;
   };
 }

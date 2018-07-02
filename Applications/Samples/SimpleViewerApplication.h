@@ -179,7 +179,7 @@ namespace OrthancStone
         // Once the geometry of the series is downloaded from Orthanc,
         // display its first slice, and adapt the viewport to fit this
         // slice
-        if (source_ == &source)
+        if (source_.get() == &source)
         {
           //SetSlice(source_->GetSliceCount() / 2);
         }
@@ -187,12 +187,8 @@ namespace OrthancStone
         mainLayout_->SetDefaultView();
       }
 
-      void OnGeometryReady(const ILayerSource& source)
-      {
-        mainLayout_->SetDefaultView();
-      }
 
-      virtual void NotifyGeometryError(const ILayerSource& source)
+      void NotifyGeometryError(const ILayerSource& source)
       {
       }
       
@@ -205,7 +201,7 @@ namespace OrthancStone
       {
       }
  
-      virtual void NotifyLayerReady(std::auto_ptr<ILayerRenderer>& layer,
+      virtual void NotifyLayerReady(boost::shared_ptr<ILayerRenderer> renderer,
                                     const ILayerSource& source,
                                     const CoordinateSystem3D& slice,
                                     bool isError)
@@ -215,14 +211,14 @@ namespace OrthancStone
       std::unique_ptr<Interactor>     interactor_;
       LayoutWidget*                   mainLayout_;
       LayoutWidget*                   thumbnailsLayout_;
-      LayerWidget*                    mainViewport_;
-      std::vector<LayerWidget*>       thumbnails_;
+      boost::shared_ptr<LayerWidget>  mainViewport_;
+      std::vector<boost::shared_ptr<LayerWidget>>       thumbnails_;
       std::vector<std::string>        instances_;
       unsigned int                    currentInstanceIndex_;
       OrthancStone::WidgetViewport*                wasmViewport1_;
       OrthancStone::WidgetViewport*                wasmViewport2_;
 
-      OrthancFrameLayerSource*        source_;
+      boost::shared_ptr<OrthancFrameLayerSource>        source_;
       unsigned int                    slice_;
       
     public:
@@ -288,27 +284,30 @@ namespace OrthancStone
         thumbnailsLayout_->SetBackgroundColor(50, 50, 50);
         thumbnailsLayout_->SetVertical();
 
-        mainViewport_ = new LayerWidget();
-        thumbnails_.push_back(new LayerWidget());
-        thumbnails_.push_back(new LayerWidget());
+        mainViewport_.reset(new LayerWidget());
+        thumbnails_.push_back(boost::shared_ptr<LayerWidget>(new LayerWidget()));
+        thumbnails_.push_back(boost::shared_ptr<LayerWidget>(new LayerWidget()));
 
         // hierarchy
         mainLayout_->AddWidget(thumbnailsLayout_);
-        mainLayout_->AddWidget(mainViewport_);
-        thumbnailsLayout_->AddWidget(thumbnails_[0]);
-        thumbnailsLayout_->AddWidget(thumbnails_[1]);
+        mainLayout_->AddWidget(mainViewport_.get());
+        thumbnailsLayout_->AddWidget(thumbnails_[0].get());
+        thumbnailsLayout_->AddWidget(thumbnails_[1].get());
 
         // sources
-        source_ = new OrthancFrameLayerSource(context_->GetWebService());
+        source_.reset(new OrthancFrameLayerSource());
+        source_->Init(context_->GetWebService());
         source_->LoadFrame(instances_[currentInstanceIndex_], 0);
 //        source_->Register(*this);
-        source_->SignalGeometryReady.connect(boost::bind(&SimpleViewerApplication::OnGeometryReady, this, _1));
+        //source_->SignalGeometryReady.connect(boost::bind(&SimpleViewerApplication::NotifyGeometryReady, this, _1));
 
         mainViewport_->AddLayer(source_);
 
-        OrthancFrameLayerSource* thumb0 = new OrthancFrameLayerSource(context_->GetWebService());
+        boost::shared_ptr<OrthancFrameLayerSource> thumb0(new OrthancFrameLayerSource());
+        thumb0->Init(context_->GetWebService());
         thumb0->LoadFrame(instances_[0], 0);
-        OrthancFrameLayerSource* thumb1 = new OrthancFrameLayerSource(context_->GetWebService());
+        boost::shared_ptr<OrthancFrameLayerSource> thumb1(new OrthancFrameLayerSource());
+        thumb1->Init(context_->GetWebService());
         thumb1->LoadFrame(instances_[1], 0);
 
         thumbnails_[0]->AddLayer(thumb0);
@@ -323,7 +322,7 @@ namespace OrthancStone
       virtual void InitializeWasm() {
 
         AttachWidgetToWasmViewport("canvas", thumbnailsLayout_);
-        AttachWidgetToWasmViewport("canvas2", mainViewport_);
+        AttachWidgetToWasmViewport("canvas2", mainViewport_.get());  //TODO: check object lifecycle
       }
 #endif
       void NextImage(WorldSceneWidget& widget) {
@@ -331,11 +330,16 @@ namespace OrthancStone
 
         currentInstanceIndex_ = (currentInstanceIndex_ + 1) % instances_.size();
 
-        std::auto_ptr<OrthancFrameLayerSource> layer
-            (new OrthancFrameLayerSource(context_->GetWebService()));
-        layer->LoadFrame(instances_[currentInstanceIndex_], 0);
+        source_.reset(new OrthancFrameLayerSource());
+        source_->Init(context_->GetWebService());
+        source_->LoadFrame(instances_[currentInstanceIndex_], 0);
 
-        mainViewport_->ReplaceLayer(0, layer.release());
+
+//        std::auto_ptr<OrthancFrameLayerSource> layer
+//            (new OrthancFrameLayerSource(context_->GetWebService()));
+//        layer->LoadFrame(instances_[currentInstanceIndex_], 0);
+
+        mainViewport_->ReplaceLayer(0, source_);
         //  source_->LoadFrame("45b7e6bc-168e8ed1-063dc08d-cffd6431-133a276a", 0);
       }
 

@@ -26,16 +26,31 @@
 #include "../StoneEnumerations.h"
 
 #include <boost/shared_ptr.hpp>
+#include <boost/signals2.hpp>
 
 namespace OrthancStone
 {
-  class OrthancSlicesLoader : public boost::noncopyable
+  class OrthancSlicesLoader : public IWebService::IWebServiceObserver
   {
   public:
-    class ICallback : public boost::noncopyable
+    class IObserver : public boost::noncopyable
     {
     public:
-      virtual ~ICallback()
+      typedef boost::signals2::signal<void (const OrthancSlicesLoader& loader)> SignalGeometryReadyType;
+      typedef boost::signals2::signal<void (const OrthancSlicesLoader& loader)> SignalGeometryErrorType;
+      typedef boost::signals2::signal<void (const OrthancSlicesLoader& loader,
+                                            unsigned int sliceIndex,
+                                            const Slice& slice,
+                                            std::auto_ptr<Orthanc::ImageAccessor>& image,
+                                            SliceImageQuality effectiveQuality)> SignalSliceImageReadyType;
+      typedef boost::signals2::signal<void (const OrthancSlicesLoader& loader,
+                                            unsigned int sliceIndex,
+                                            const Slice& slice,
+                                            SliceImageQuality quality)> SignalSliceImageErrorType;
+
+
+    public:
+      virtual ~IObserver()
       {
       }
 
@@ -54,7 +69,13 @@ namespace OrthancStone
                                          const Slice& slice,
                                          SliceImageQuality quality) = 0;
     };
-    
+
+  private:
+    IObserver::SignalGeometryReadyType SignalGeometryReady;
+    IObserver::SignalGeometryErrorType SignalGeometryError;
+    IObserver::SignalSliceImageReadyType SignalSliceImageReady;
+    IObserver::SignalSliceImageErrorType SignalSliceImageError;
+
   private:
     enum State
     {
@@ -74,11 +95,12 @@ namespace OrthancStone
     };
 
     class Operation;
-    class WebCallback;
+    //class WebCallback;
 
-    boost::shared_ptr<WebCallback>  webCallback_;  // This is a PImpl pattern
+    //boost::shared_ptr<WebCallback>  webCallback_;  // This is a PImpl pattern
 
-    ICallback&    userCallback_;
+    //ICallback&    userCallback_;
+    boost::shared_ptr<OrthancSlicesLoader::IObserver> observer_;
     IWebService&  orthanc_;
     State         state_;
     SlicesSorter  slices_;
@@ -112,24 +134,24 @@ namespace OrthancStone
                             const void* answer,
                             size_t size);
 
-    void ScheduleSliceImagePng(const Slice& slice,
+    void ScheduleSliceImagePng(boost::shared_ptr<boost::noncopyable> tracker, const Slice& slice,
                                size_t index);
     
-    void ScheduleSliceImageJpeg(const Slice& slice,
+    void ScheduleSliceImageJpeg(boost::shared_ptr<boost::noncopyable> tracker, const Slice& slice,
                                 size_t index,
                                 SliceImageQuality quality);
 
     void SortAndFinalizeSlices();
     
   public:
-    OrthancSlicesLoader(ICallback& callback,
+    OrthancSlicesLoader(boost::shared_ptr<OrthancSlicesLoader::IObserver> observer,
                         IWebService& orthanc);
 
-    void ScheduleLoadSeries(const std::string& seriesId);
+    void ScheduleLoadSeries(boost::shared_ptr<boost::noncopyable> tracker, const std::string& seriesId);
 
-    void ScheduleLoadInstance(const std::string& instanceId);
+    void ScheduleLoadInstance(boost::shared_ptr<boost::noncopyable> tracker, const std::string& instanceId);
 
-    void ScheduleLoadFrame(const std::string& instanceId,
+    void ScheduleLoadFrame(boost::shared_ptr<boost::noncopyable> tracker, const std::string& instanceId,
                            unsigned int frame);
 
     bool IsGeometryReady() const;
@@ -141,7 +163,17 @@ namespace OrthancStone
     bool LookupSlice(size_t& index,
                      const CoordinateSystem3D& plane) const;
 
-    void ScheduleLoadSliceImage(size_t index,
+    void ScheduleLoadSliceImage(boost::shared_ptr<boost::noncopyable> tracker, size_t index,
                                 SliceImageQuality requestedQuality);
+
+
+    void OnRequestSuccess(const std::string& uri,
+                   const void* answer,
+                               size_t answerSize,
+                               Orthanc::IDynamicObject* payload);
+
+    void OnRequestError(const std::string& uri,
+                             Orthanc::IDynamicObject* payload);
+
   };
 }

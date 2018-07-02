@@ -55,7 +55,7 @@ namespace OrthancStone
                                                       SliceImageQuality quality)
   {
     bool isFull = (quality == SliceImageQuality_Full);
-    LayerSourceBase::NotifyLayerReady(FrameRenderer::CreateRenderer(image.release(), slice, isFull),
+    LayerSourceBase::NotifyLayerReady(boost::shared_ptr<ILayerRenderer>(FrameRenderer::CreateRenderer(image.release(), slice, isFull)),
                                       slice.GetGeometry(), false);
   }
 
@@ -68,29 +68,33 @@ namespace OrthancStone
   }
 
 
-  OrthancFrameLayerSource::OrthancFrameLayerSource(IWebService& orthanc) :
-    loader_(*this, orthanc),
+  OrthancFrameLayerSource::OrthancFrameLayerSource() :
     quality_(SliceImageQuality_Full)
   {
   }
 
-  
+  void OrthancFrameLayerSource::Init(IWebService& orthanc) {
+    // note: there must have been a shared_ptr created on this object before calling shared_from_this()
+
+    loader_.reset(new OrthancSlicesLoader(shared_from_this(), orthanc));
+  }
+
   void OrthancFrameLayerSource::LoadSeries(const std::string& seriesId)
   {
-    loader_.ScheduleLoadSeries(seriesId);
+    loader_->ScheduleLoadSeries(loader_, seriesId);
   }
 
 
   void OrthancFrameLayerSource::LoadInstance(const std::string& instanceId)
   {
-    loader_.ScheduleLoadInstance(instanceId);
+    loader_->ScheduleLoadInstance(loader_, instanceId);
   }
 
 
   void OrthancFrameLayerSource::LoadFrame(const std::string& instanceId,
                                           unsigned int frame)
   {
-    loader_.ScheduleLoadFrame(instanceId, frame);
+    loader_->ScheduleLoadFrame(loader_, instanceId, frame);
   }
 
 
@@ -98,10 +102,10 @@ namespace OrthancStone
                                           const CoordinateSystem3D& viewportSlice)
   {
     size_t index;
-    if (loader_.IsGeometryReady() &&
-        loader_.LookupSlice(index, viewportSlice))
+    if (loader_->IsGeometryReady() &&
+        loader_->LookupSlice(index, viewportSlice))
     {
-      loader_.GetSlice(index).GetExtent(points);
+      loader_->GetSlice(index).GetExtent(points);
       return true;
     }
     else
@@ -115,11 +119,11 @@ namespace OrthancStone
   {
     size_t index;
 
-    if (loader_.IsGeometryReady())
+    if (loader_->IsGeometryReady())
     {
-      if (loader_.LookupSlice(index, viewportSlice))
+      if (loader_->LookupSlice(index, viewportSlice))
       {
-        loader_.ScheduleLoadSliceImage(index, quality_);
+        loader_->ScheduleLoadSliceImage(loader_, index, quality_);
       }
       else
       {

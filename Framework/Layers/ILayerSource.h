@@ -23,6 +23,7 @@
 
 #include "ILayerRenderer.h"
 #include "../Toolbox/Slice.h"
+#include <boost/shared_ptr.hpp>
 
 namespace OrthancStone
 {
@@ -52,8 +53,8 @@ namespace OrthancStone
                                      const Slice& slice) = 0;
  
       // The layer must be deleted by the observer that releases the
-      // std::auto_ptr
-      virtual void NotifyLayerReady(std::auto_ptr<ILayerRenderer>& layer,
+      // std::auto_ptr   // TODO: check the lifecycle of the layer since we are not using an std::auto_ptr anymore
+      virtual void NotifyLayerReady(boost::shared_ptr<ILayerRenderer> renderer,
                                     const ILayerSource& source,
                                     const CoordinateSystem3D& slice,
                                     bool isError) = 0;  // TODO Shouldn't this be separate as NotifyLayerError?
@@ -63,7 +64,7 @@ namespace OrthancStone
     {
     }
 
-    virtual void Register(IObserver& observer) = 0;
+    virtual void Register(boost::shared_ptr<IObserver> observer) = 0;
 
     virtual bool GetExtent(std::vector<Vector>& points,
                            const CoordinateSystem3D& viewportSlice) = 0;

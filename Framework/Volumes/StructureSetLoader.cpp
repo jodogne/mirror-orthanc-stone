@@ -61,14 +61,14 @@ namespace OrthancStone
   };
 
 
-  void StructureSetLoader::NotifyError(const std::string& uri,
+  void StructureSetLoader::OnRequestError(const std::string& uri,
                                        Orthanc::IDynamicObject* payload)
   {
     // TODO
   }
 
   
-  void StructureSetLoader::NotifySuccess(const std::string& uri,
+  void StructureSetLoader::OnRequestSuccess(const std::string& uri,
                                          const void* answer,
                                          size_t answerSize,
                                          Orthanc::IDynamicObject* payload)

@@ -35,7 +35,7 @@ namespace OrthancStone
   class WebServiceGetCommand : public IOracleCommand
   {
   private:
-    IWebService::ICallback&                 callback_;
+    IWebService::IWebServiceObserver*       observer_;
     Orthanc::WebServiceParameters           parameters_;
     std::string                             uri_;
     std::auto_ptr<Orthanc::IDynamicObject>  payload_;
@@ -43,7 +43,8 @@ namespace OrthancStone
     std::string                             answer_;
 
   public:
-    WebServiceGetCommand(IWebService::ICallback& callback,
+    WebServiceGetCommand(IWebService::IWebServiceObserver* observer,
+                         boost::shared_ptr<boost::noncopyable> tracker,
                          const Orthanc::WebServiceParameters& parameters,
                          const std::string& uri,
                          Orthanc::IDynamicObject* payload /* takes ownership */);
@@ -52,10 +53,10 @@ namespace OrthancStone
 
     virtual void Commit();
 
-    boost::signals2::signal<void (const std::string& uri,
-                                  const void* answer,
-                                  size_t answerSize,
-                                  Orthanc::IDynamicObject* payload)> SignalSuccess;
+  private:
+
+    IWebService::IWebServiceObserver::SignalSuccessType SignalSuccess;
+    IWebService::IWebServiceObserver::SignalErrorType SignalError;
 
   };
 }

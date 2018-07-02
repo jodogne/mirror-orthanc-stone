@@ -169,18 +169,18 @@ namespace OrthancStone
   };
     
 
-  class OrthancSlicesLoader::WebCallback : public IWebService::ICallback
-  {
-  private:
-    OrthancSlicesLoader&  that_;
+//  class OrthancSlicesLoader::WebCallback : public IWebService::ICallback
+//  {
+//  private:
+//    OrthancSlicesLoader&  that_;
 
-  public:
-    WebCallback(OrthancSlicesLoader&  that) :
-      that_(that)
-    {
-    }
+//  public:
+//    WebCallback(OrthancSlicesLoader&  that) :
+//      that_(that)
+//    {
+//    }
 
-    virtual void NotifySuccess(const std::string& uri,
+    void OrthancSlicesLoader::OnRequestSuccess(const std::string& uri,
                                const void* answer,
                                size_t answerSize,
                                Orthanc::IDynamicObject* payload)
@@ -190,15 +190,15 @@ namespace OrthancStone
       switch (operation->GetMode())
       {
         case Mode_SeriesGeometry:
-          that_.ParseSeriesGeometry(answer, answerSize);
+          ParseSeriesGeometry(answer, answerSize);
           break;
 
         case Mode_InstanceGeometry:
-          that_.ParseInstanceGeometry(operation->GetInstanceId(), answer, answerSize);
+          ParseInstanceGeometry(operation->GetInstanceId(), answer, answerSize);
           break;
 
         case Mode_FrameGeometry:
-          that_.ParseFrameGeometry(operation->GetInstanceId(),
+          ParseFrameGeometry(operation->GetInstanceId(),
                                    operation->GetFrame(), answer, answerSize);
           break;
 
@@ -206,13 +206,13 @@ namespace OrthancStone
           switch (operation->GetQuality())
           {
             case SliceImageQuality_Full:
-              that_.ParseSliceImagePng(*operation, answer, answerSize);
+              ParseSliceImagePng(*operation, answer, answerSize);
               break;
 
             case SliceImageQuality_Jpeg50:
             case SliceImageQuality_Jpeg90:
             case SliceImageQuality_Jpeg95:
-              that_.ParseSliceImageJpeg(*operation, answer, answerSize);
+              ParseSliceImageJpeg(*operation, answer, answerSize);
               break;
 
             default:
@@ -222,7 +222,7 @@ namespace OrthancStone
           break;
 
         case Mode_LoadRawImage:
-          that_.ParseSliceRawImage(*operation, answer, answerSize);
+          ParseSliceRawImage(*operation, answer, answerSize);
           break;
 
         default:
@@ -230,7 +230,7 @@ namespace OrthancStone
       }
     }
 
-    virtual void NotifyError(const std::string& uri,
+    void OrthancSlicesLoader::OnRequestError(const std::string& uri,
                              Orthanc::IDynamicObject* payload)
     {
       std::auto_ptr<Operation> operation(dynamic_cast<Operation*>(payload));
@@ -240,12 +240,12 @@ namespace OrthancStone
       {
         case Mode_FrameGeometry:
         case Mode_SeriesGeometry:
-          that_.userCallback_.NotifyGeometryError(that_);
-          that_.state_ = State_Error;
+          SignalGeometryError(*this);
+          state_ = State_Error;
           break;
 
         case Mode_LoadImage:
-          that_.userCallback_.NotifySliceImageError(that_, operation->GetSliceIndex(),
+          SignalSliceImageError(*this, operation->GetSliceIndex(),
                                                     operation->GetSlice(),
                                                     operation->GetQuality());
           break;
@@ -254,7 +254,7 @@ namespace OrthancStone
           throw Orthanc::OrthancException(Orthanc::ErrorCode_InternalError);
       }
     }     
-  };
+//  };
 
 
   
@@ -267,16 +267,14 @@ namespace OrthancStone
     }
     else
     {
-      userCallback_.NotifySliceImageReady
-        (*this, operation.GetSliceIndex(), operation.GetSlice(), image, operation.GetQuality());
+      SignalSliceImageReady(*this, operation.GetSliceIndex(), operation.GetSlice(), image, operation.GetQuality());
     }
   }
 
   
   void OrthancSlicesLoader::NotifySliceImageError(const Operation& operation) const
   {
-    userCallback_.NotifySliceImageError
-      (*this, operation.GetSliceIndex(), operation.GetSlice(), operation.GetQuality());
+    SignalSliceImageError(*this, operation.GetSliceIndex(), operation.GetSlice(), operation.GetQuality());
   }
 
 
@@ -301,12 +299,12 @@ namespace OrthancStone
     if (ok)
     {
       LOG(INFO) << "Loaded a series with " << slices_.GetSliceCount() << " slice(s)";
-      userCallback_.NotifyGeometryReady(*this);
+      SignalGeometryReady(*this);
     }
     else
     {
       LOG(ERROR) << "This series is empty";
-      userCallback_.NotifyGeometryError(*this);
+      SignalGeometryError(*this);
     }
   }
 
@@ -318,7 +316,7 @@ namespace OrthancStone
     if (!MessagingToolbox::ParseJson(series, answer, size) ||
         series.type() != Json::objectValue)
     {
-      userCallback_.NotifyGeometryError(*this);
+      SignalGeometryError(*this);
       return;
     }
 
@@ -365,7 +363,7 @@ namespace OrthancStone
     if (!MessagingToolbox::ParseJson(tags, answer, size) ||
         tags.type() != Json::objectValue)
     {
-      userCallback_.NotifyGeometryError(*this);
+      SignalGeometryError(*this);
       return;
     }
 
@@ -392,7 +390,7 @@ namespace OrthancStone
       else
       {
         LOG(WARNING) << "Skipping invalid multi-frame instance " << instanceId;
-        userCallback_.NotifyGeometryError(*this);
+        SignalGeometryError(*this);
         return;
       }
     }
@@ -410,7 +408,7 @@ namespace OrthancStone
     if (!MessagingToolbox::ParseJson(tags, answer, size) ||
         tags.type() != Json::objectValue)
     {
-      userCallback_.NotifyGeometryError(*this);
+      SignalGeometryError(*this);
       return;
     }
 
@@ -426,12 +424,12 @@ namespace OrthancStone
     {
       LOG(INFO) << "Loaded instance " << instanceId;
       slices_.AddSlice(slice.release());
-      userCallback_.NotifyGeometryReady(*this);
+      SignalGeometryReady(*this);
     }
     else
     {
       LOG(WARNING) << "Skipping invalid instance " << instanceId;
-      userCallback_.NotifyGeometryError(*this);
+      SignalGeometryError(*this);
     }
   }
 
@@ -715,17 +713,22 @@ namespace OrthancStone
   }
 
 
-  OrthancSlicesLoader::OrthancSlicesLoader(ICallback& callback,
+  OrthancSlicesLoader::OrthancSlicesLoader(boost::shared_ptr<OrthancSlicesLoader::IObserver> observer,
                                            IWebService& orthanc) :
-    webCallback_(new WebCallback(*this)),
-    userCallback_(callback),
+    //webCallback_(new WebCallback(*this)),
+//    userCallback_(callback),
+    observer_(observer),
     orthanc_(orthanc),
     state_(State_Initialization)
   {
+    SignalGeometryReady.connect(OrthancSlicesLoader::IObserver::SignalGeometryReadyType::slot_type(&OrthancSlicesLoader::IObserver::NotifyGeometryReady, observer.get(), _1).track(observer));
+    SignalGeometryError.connect(OrthancSlicesLoader::IObserver::SignalGeometryErrorType::slot_type(&OrthancSlicesLoader::IObserver::NotifyGeometryError, observer.get(), _1).track(observer));
+    SignalSliceImageReady.connect(OrthancSlicesLoader::IObserver::SignalSliceImageReadyType::slot_type(&OrthancSlicesLoader::IObserver::NotifySliceImageReady, observer.get(), _1, _2, _3, _4, _5).track(observer));
+    SignalSliceImageError.connect(OrthancSlicesLoader::IObserver::SignalSliceImageErrorType::slot_type(&OrthancSlicesLoader::IObserver::NotifySliceImageError, observer.get(), _1, _2, _3, _4).track(observer));
   }
 
   
-  void OrthancSlicesLoader::ScheduleLoadSeries(const std::string& seriesId)
+  void OrthancSlicesLoader::ScheduleLoadSeries(boost::shared_ptr<boost::noncopyable> tracker, const std::string& seriesId)
   {
     if (state_ != State_Initialization)
     {
@@ -735,12 +738,12 @@ namespace OrthancStone
     {
       state_ = State_LoadingGeometry;
       std::string uri = "/series/" + seriesId + "/instances-tags";
-      orthanc_.ScheduleGetRequest(*webCallback_, uri, Operation::DownloadSeriesGeometry());
+      orthanc_.ScheduleGetRequest(this, tracker, uri, Operation::DownloadSeriesGeometry());
     }
   }
 
 
-  void OrthancSlicesLoader::ScheduleLoadInstance(const std::string& instanceId)
+  void OrthancSlicesLoader::ScheduleLoadInstance(boost::shared_ptr<boost::noncopyable> tracker, const std::string& instanceId)
   {
     if (state_ != State_Initialization)
     {
@@ -754,12 +757,12 @@ namespace OrthancStone
       // mandatory to read RT DOSE, but is too long to be returned by default
       std::string uri = "/instances/" + instanceId + "/tags?ignore-length=3004-000c";
       orthanc_.ScheduleGetRequest
-        (*webCallback_, uri, Operation::DownloadInstanceGeometry(instanceId));
+        (this, tracker, uri, Operation::DownloadInstanceGeometry(instanceId));
     }
   }
   
 
-  void OrthancSlicesLoader::ScheduleLoadFrame(const std::string& instanceId,
+  void OrthancSlicesLoader::ScheduleLoadFrame(boost::shared_ptr<boost::noncopyable> tracker, const std::string& instanceId,
                                               unsigned int frame)
   {
     if (state_ != State_Initialization)
@@ -771,7 +774,7 @@ namespace OrthancStone
       state_ = State_LoadingGeometry;
       std::string uri = "/instances/" + instanceId + "/tags";
       orthanc_.ScheduleGetRequest
-        (*webCallback_, uri, Operation::DownloadFrameGeometry(instanceId, frame));
+        (this, tracker, uri, Operation::DownloadFrameGeometry(instanceId, frame));
     }
   }
   
@@ -816,7 +819,7 @@ namespace OrthancStone
   }
   
 
-  void OrthancSlicesLoader::ScheduleSliceImagePng(const Slice& slice,
+  void OrthancSlicesLoader::ScheduleSliceImagePng(boost::shared_ptr<boost::noncopyable> tracker, const Slice& slice,
                                                   size_t index)
   {
     std::string uri = ("/instances/" + slice.GetOrthancInstanceId() + "/frames/" + 
@@ -840,12 +843,12 @@ namespace OrthancStone
         throw Orthanc::OrthancException(Orthanc::ErrorCode_ParameterOutOfRange);
     }
 
-    orthanc_.ScheduleGetRequest(*webCallback_, uri,
+    orthanc_.ScheduleGetRequest(this, tracker, uri,
                                 Operation::DownloadSliceImage(index, slice, SliceImageQuality_Full));
   }
 
 
-  void OrthancSlicesLoader::ScheduleSliceImageJpeg(const Slice& slice,
+  void OrthancSlicesLoader::ScheduleSliceImageJpeg(boost::shared_ptr<boost::noncopyable> tracker, const Slice& slice,
                                                    size_t index,
                                                    SliceImageQuality quality)
   {
@@ -875,13 +878,13 @@ namespace OrthancStone
                        "-" + slice.GetOrthancInstanceId() + "_" + 
                        boost::lexical_cast<std::string>(slice.GetFrame()));
       
-    orthanc_.ScheduleGetRequest(*webCallback_, uri,
+    orthanc_.ScheduleGetRequest(this, tracker, uri,
                                 Operation::DownloadSliceImage(index, slice, quality));
   }
 
 
 
-  void OrthancSlicesLoader::ScheduleLoadSliceImage(size_t index,
+  void OrthancSlicesLoader::ScheduleLoadSliceImage(boost::shared_ptr<boost::noncopyable> tracker, size_t index,
                                                    SliceImageQuality quality)
   {
     if (state_ != State_GeometryReady)
@@ -895,18 +898,18 @@ namespace OrthancStone
     {
       if (quality == SliceImageQuality_Full)
       {
-        ScheduleSliceImagePng(slice, index);
+        ScheduleSliceImagePng(tracker, slice, index);
       }
       else
       {
-        ScheduleSliceImageJpeg(slice, index, quality);
+        ScheduleSliceImageJpeg(tracker, slice, index, quality);
       }
     }
     else
     {
       std::string uri = ("/instances/" + slice.GetOrthancInstanceId() + "/frames/" + 
                          boost::lexical_cast<std::string>(slice.GetFrame()) + "/raw.gz");
-      orthanc_.ScheduleGetRequest(*webCallback_, uri,
+      orthanc_.ScheduleGetRequest(this, tracker, uri,
                                   Operation::DownloadSliceRawImage(index, slice));
     }
   }

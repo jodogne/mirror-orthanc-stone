@@ -24,6 +24,7 @@
 #include "WorldSceneWidget.h"
 #include "../Layers/ILayerSource.h"
 #include "../Toolbox/Extent2D.h"
+#include <boost/enable_shared_from_this.hpp>
 
 #include <map>
 
@@ -31,7 +32,10 @@ namespace OrthancStone
 {
   class LayerWidget :
     public WorldSceneWidget,
-    private ILayerSource::IObserver
+    public ILayerSource::IObserver,
+    public boost::enable_shared_from_this<ILayerSource::IObserver>
+      //public boost::enable_shared_from_this<LayerWidget>
+
   {
   private:
     class Scene;
@@ -40,7 +44,7 @@ namespace OrthancStone
 
     bool                        started_;
     LayersIndex                 layersIndex_;
-    std::vector<ILayerSource*>  layers_;
+    std::vector<boost::shared_ptr<ILayerSource>>  layers_;
     std::vector<RenderStyle>    styles_;
     CoordinateSystem3D          slice_;
     std::auto_ptr<Scene>        currentScene_;
@@ -62,7 +66,7 @@ namespace OrthancStone
     virtual void NotifySliceChange(const ILayerSource& source,
                                    const Slice& slice);
 
-    virtual void NotifyLayerReady(std::auto_ptr<ILayerRenderer>& renderer,
+    virtual void NotifyLayerReady(boost::shared_ptr<ILayerRenderer> renderer,
                                   const ILayerSource& source,
                                   const CoordinateSystem3D& slice,
                                   bool isError);
@@ -79,7 +83,7 @@ namespace OrthancStone
     void ResetPendingScene();
 
     void UpdateLayer(size_t index,
-                     ILayerRenderer* renderer,
+                     boost::shared_ptr<ILayerRenderer>  renderer,
                      const CoordinateSystem3D& slice);
 
     void InvalidateAllLayers();
@@ -91,9 +95,9 @@ namespace OrthancStone
 
     virtual ~LayerWidget();
 
-    size_t AddLayer(ILayerSource* layer);  // Takes ownership
+    size_t AddLayer(boost::shared_ptr<ILayerSource> layer);
 
-    void ReplaceLayer(size_t layerIndex, ILayerSource* layer); // Takes ownership
+    void ReplaceLayer(size_t layerIndex, boost::shared_ptr<ILayerSource> layer); // Takes ownership
 
     size_t GetLayerCount() const
     {

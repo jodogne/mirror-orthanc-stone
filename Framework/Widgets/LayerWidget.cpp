@@ -36,7 +36,7 @@ namespace OrthancStone
     CoordinateSystem3D            slice_;
     double                        thickness_;
     size_t                        countMissing_;
-    std::vector<ILayerRenderer*>  renderers_;
+    std::vector<boost::shared_ptr<ILayerRenderer>>  renderers_;
 
     void DeleteLayer(size_t index)
     {
@@ -47,11 +47,10 @@ namespace OrthancStone
 
       assert(countMissing_ <= renderers_.size());
 
-      if (renderers_[index] != NULL)
+      if (renderers_[index].get() != NULL)
       {
         assert(countMissing_ < renderers_.size());
-        delete renderers_[index];
-        renderers_[index] = NULL;
+        renderers_[index].reset();
         countMissing_++;
       }
     }
@@ -63,7 +62,7 @@ namespace OrthancStone
       slice_(slice),
       thickness_(thickness),
       countMissing_(countLayers),
-      renderers_(countLayers, NULL)
+      renderers_(countLayers)
     {
       if (thickness <= 0)
       {
@@ -80,9 +79,9 @@ namespace OrthancStone
     }
 
     void SetLayer(size_t index,
-                  ILayerRenderer* renderer)  // Takes ownership
+                  boost::shared_ptr<ILayerRenderer> renderer)
     {
-      if (renderer == NULL)
+      if (renderer.get() == NULL)
       {
         throw Orthanc::OrthancException(Orthanc::ErrorCode_NullPointer);
       }
@@ -100,7 +99,7 @@ namespace OrthancStone
 
     bool HasRenderer(size_t index)
     {
-      return renderers_[index] != NULL;
+      return renderers_[index].get() != NULL;
     }
 
     bool IsComplete() const
@@ -122,7 +121,7 @@ namespace OrthancStone
 
       for (size_t i = 0; i < renderers_.size(); i++)
       {
-        if (renderers_[i] != NULL)
+        if (renderers_[i].get() != NULL)
         {
           const CoordinateSystem3D& frameSlice = renderers_[i]->GetLayerSlice();
           
@@ -161,7 +160,7 @@ namespace OrthancStone
           cairo_restore(cr);
         }
 
-        if (renderers_[i] != NULL &&
+        if (renderers_[i].get() != NULL &&
             !renderers_[i]->IsFullQuality())
         {
           fullQuality = false;
@@ -196,7 +195,7 @@ namespace OrthancStone
     void SetLayerStyle(size_t index,
                        const RenderStyle& style)
     {
-      if (renderers_[index] != NULL)
+      if (renderers_[index].get() != NULL)
       {
         renderers_[index]->SetLayerStyle(style);
       }
@@ -245,7 +244,7 @@ namespace OrthancStone
     {
       index = found->second;
       assert(index < layers_.size() &&
-             layers_[index] == &layer);
+             layers_[index].get() == &layer);
       return true;
     }
   }
@@ -317,14 +316,12 @@ namespace OrthancStone
   
 
   void LayerWidget::UpdateLayer(size_t index,
-                                ILayerRenderer* renderer,
+                                boost::shared_ptr<ILayerRenderer> renderer,
                                 const CoordinateSystem3D& slice)
   {
     LOG(INFO) << "Updating layer " << index;
     
-    std::auto_ptr<ILayerRenderer> tmp(renderer);
-
-    if (renderer == NULL)
+    if (renderer.get() == NULL)
     {
       throw Orthanc::OrthancException(Orthanc::ErrorCode_NullPointer);
     }
@@ -340,13 +337,13 @@ namespace OrthancStone
     if (currentScene_.get() != NULL &&
         currentScene_->ContainsPlane(slice))
     {
-      currentScene_->SetLayer(index, tmp.release());
+      currentScene_->SetLayer(index, renderer);
       NotifyChange();
     }
     else if (pendingScene_.get() != NULL &&
              pendingScene_->ContainsPlane(slice))
     {
-      pendingScene_->SetLayer(index, tmp.release());
+      pendingScene_->SetLayer(index, renderer);
 
       if (currentScene_.get() == NULL ||
           !currentScene_->IsComplete() ||
@@ -370,14 +367,14 @@ namespace OrthancStone
   {
     for (size_t i = 0; i < layers_.size(); i++)
     {
-      delete layers_[i];
+      layers_[i].reset();
     }
   }
   
 
-  size_t LayerWidget::AddLayer(ILayerSource* layer)  // Takes ownership
+  size_t LayerWidget::AddLayer(boost::shared_ptr<ILayerSource> layer)
   {
-    if (layer == NULL)
+    if (layer.get() == NULL)
     {
       throw Orthanc::OrthancException(Orthanc::ErrorCode_NullPointer);
     }
@@ -385,19 +382,19 @@ namespace OrthancStone
     size_t index = layers_.size();
     layers_.push_back(layer);
     styles_.push_back(RenderStyle());
-    layersIndex_[layer] = index;
+    layersIndex_[layer.get()] = index;
 
     ResetPendingScene();
-    layer->Register(*this);
+    layer->Register(reinterpret_cast<boost::enable_shared_from_this<ILayerSource::IObserver>&>(*this).shared_from_this());
 
     ResetChangedLayers();
 
     return index;
   }
 
-  void LayerWidget::ReplaceLayer(size_t index, ILayerSource* layer)  // Takes ownership
+  void LayerWidget::ReplaceLayer(size_t index, boost::shared_ptr<ILayerSource> layer)
   {
-    if (layer == NULL)
+    if (layer.get() == NULL)
     {
       throw Orthanc::OrthancException(Orthanc::ErrorCode_NullPointer);
     }
@@ -407,12 +404,11 @@ namespace OrthancStone
       throw Orthanc::OrthancException(Orthanc::ErrorCode_ParameterOutOfRange);
     }
 
-    delete layers_[index];
-    layers_[index] = layer;
-    layersIndex_[layer] = index;
+    layers_[index]= layer;
+    layersIndex_[layer.get()] = index;
 
     ResetPendingScene();
-    layer->Register(*this);
+    layer->Register(shared_from_this());
 
     InvalidateLayer(index);
   }
@@ -549,7 +545,7 @@ namespace OrthancStone
   }
   
   
-  void LayerWidget::NotifyLayerReady(std::auto_ptr<ILayerRenderer>& renderer,
+  void LayerWidget::NotifyLayerReady(boost::shared_ptr<ILayerRenderer> renderer,
                                      const ILayerSource& source,
                                      const CoordinateSystem3D& slice,
                                      bool isError)
@@ -566,9 +562,10 @@ namespace OrthancStone
         LOG(INFO) << "Renderer ready for layer " << index;
       }
       
-      if (renderer.get() != NULL)
+      if (renderer)
       {
-        UpdateLayer(index, renderer.release(), slice);
+        UpdateLayer(index, renderer, slice);
+        //delete renderer; // TODO: find a better way to handle lifecycle !
       }
       else if (isError)
       {

@@ -25,16 +25,18 @@
 
 namespace OrthancStone
 {
-  WebServiceGetCommand::WebServiceGetCommand(IWebService::ICallback& callback,
-                                             const Orthanc::WebServiceParameters& parameters,
+  WebServiceGetCommand::WebServiceGetCommand(IWebService::IWebServiceObserver* observer,
+                                             boost::shared_ptr<boost::noncopyable> tracker,const Orthanc::WebServiceParameters& parameters,
                                              const std::string& uri,
                                              Orthanc::IDynamicObject* payload /* takes ownership */) :
-    callback_(callback),
+    observer_(observer),
     parameters_(parameters),
     uri_(uri),
     payload_(payload)
   {
-    //SignalSuccess.connect(boost::bind(&IWebService::ICallback::NotifySuccess, callback, _1, _2, _3, _4));
+    // connect the signals and track the deletion of the observer
+    SignalSuccess.connect(IWebService::IWebServiceObserver::SignalSuccessType::slot_type(&IWebService::IWebServiceObserver::OnRequestSuccess, observer_, _1, _2, _3, _4).track(tracker));
+    SignalError.connect(IWebService::IWebServiceObserver::SignalErrorType::slot_type(&IWebService::IWebServiceObserver::OnRequestError, observer_, _1, _2).track(tracker));
   }
 
 
@@ -52,11 +54,10 @@ namespace OrthancStone
     if (success_)
     {
       SignalSuccess(uri_, answer_.c_str(), answer_.size(), payload_.release());
-      //callback_.NotifySuccess(uri_, answer_.c_str(), answer_.size(), payload_.release());
     }
     else
     {
-      callback_.NotifyError(uri_, payload_.release());
+      SignalError(uri_, payload_.release());
     }
   }
 }

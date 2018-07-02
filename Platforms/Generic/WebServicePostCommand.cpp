@@ -25,17 +25,21 @@
 
 namespace OrthancStone
 {
-  WebServicePostCommand::WebServicePostCommand(IWebService::ICallback& callback,
+  WebServicePostCommand::WebServicePostCommand(IWebService::IWebServiceObserver* observer,
+                                               boost::shared_ptr<boost::noncopyable> tracker,
                                                const Orthanc::WebServiceParameters& parameters,
                                                const std::string& uri,
                                                const std::string& body,
                                                Orthanc::IDynamicObject* payload /* takes ownership */) :
-    callback_(callback),
+    observer_(observer),
     parameters_(parameters),
     uri_(uri),
     body_(body),
     payload_(payload)
   {
+    // connect the signals and track the deletion of the observer
+    SignalSuccess.connect(IWebService::IWebServiceObserver::SignalSuccessType::slot_type(&IWebService::IWebServiceObserver::OnRequestSuccess, observer_, _1, _2, _3, _4).track(tracker));
+    SignalError.connect(IWebService::IWebServiceObserver::SignalErrorType::slot_type(&IWebService::IWebServiceObserver::OnRequestError, observer_, _1, _2).track(tracker));
   }
 
   void WebServicePostCommand::Execute()
@@ -51,11 +55,11 @@ namespace OrthancStone
   {
     if (success_)
     {
-      callback_.NotifySuccess(uri_, answer_.c_str(), answer_.size(), payload_.release());
+      SignalSuccess(uri_, answer_.c_str(), answer_.size(), payload_.release());
     }
     else
     {
-      callback_.NotifyError(uri_, payload_.release());
+      SignalError(uri_, payload_.release());
     }
   }
 }

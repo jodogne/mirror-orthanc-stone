@@ -43,10 +43,10 @@ namespace OrthancStone
   // TODO: Handle errors while loading
   class OrthancVolumeImage : 
     public SlicedVolumeBase,
-    private OrthancSlicesLoader::ICallback
+    public OrthancSlicesLoader::IObserver
   { 
   private:
-    OrthancSlicesLoader           loader_;
+    boost::shared_ptr<OrthancSlicesLoader> loader_;
     std::auto_ptr<ImageBuffer3D>  image_;
     std::auto_ptr<DownloadStack>  downloadStack_;
     bool                          computeRange_;
@@ -59,7 +59,7 @@ namespace OrthancStone
       unsigned int slice;
       if (downloadStack_->Pop(slice))
       {
-        loader_.ScheduleLoadSliceImage(slice, SliceImageQuality_Jpeg90);
+        loader_->ScheduleLoadSliceImage(loader_, slice, SliceImageQuality_Jpeg90);
       }
     }
 
@@ -217,36 +217,36 @@ namespace OrthancStone
   public:
     OrthancVolumeImage(IWebService& orthanc,
                        bool computeRange) : 
-      loader_(*this, orthanc),
       computeRange_(computeRange),
       pendingSlices_(0)
     {
+        loader_.reset(new OrthancSlicesLoader(boost::shared_ptr<OrthancSlicesLoader::IObserver>(this), orthanc));
     }
 
     void ScheduleLoadSeries(const std::string& seriesId)
     {
-      loader_.ScheduleLoadSeries(seriesId);
+      loader_->ScheduleLoadSeries(loader_, seriesId);
     }
 
     void ScheduleLoadInstance(const std::string& instanceId)
     {
-      loader_.ScheduleLoadInstance(instanceId);
+      loader_->ScheduleLoadInstance(loader_, instanceId);
     }
 
     void ScheduleLoadFrame(const std::string& instanceId,
                            unsigned int frame)
     {
-      loader_.ScheduleLoadFrame(instanceId, frame);
+      loader_->ScheduleLoadFrame(loader_, instanceId, frame);
     }
 
     virtual size_t GetSliceCount() const
     {
-      return loader_.GetSliceCount();
+      return loader_->GetSliceCount();
     }
 
     virtual const Slice& GetSlice(size_t index) const
     {
-      return loader_.GetSlice(index);
+      return loader_->GetSlice(index);
     }
 
     ImageBuffer3D& GetImage() const
@@ -629,8 +629,8 @@ namespace OrthancStone
           }
 
           std::auto_ptr<Slice> slice(geometry.GetSlice(closest));
-          LayerSourceBase::NotifyLayerReady(
-            FrameRenderer::CreateRenderer(frame.release(), *slice, isFullQuality),
+          LayerSourceBase::NotifyLayerReady(boost::shared_ptr<ILayerRenderer>(
+            FrameRenderer::CreateRenderer(frame.release(), *slice, isFullQuality)),
             //new SliceOutlineRenderer(slice),
             slice->GetGeometry(), false);
           return;
@@ -855,7 +855,7 @@ namespace OrthancStone
                                                  extent.GetX1(), extent.GetY1(),
                                                  extent.GetX2(), extent.GetY2()))
         {
-          NotifyLayerReady(new LineLayerRenderer(x1, y1, x2, y2, slice), reference.GetGeometry(), false);
+          NotifyLayerReady(boost::shared_ptr<ILayerRenderer>(new LineLayerRenderer(x1, y1, x2, y2, slice)), reference.GetGeometry(), false);
         }
         else
         {

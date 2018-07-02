@@ -42,20 +42,22 @@ namespace OrthancStone
     {
     }
 
-    virtual void ScheduleGetRequest(ICallback& callback,
+    virtual void ScheduleGetRequest(IWebServiceObserver* observer,
+                                    boost::shared_ptr<boost::noncopyable> tracker,
                                     const std::string& uri,
                                     Orthanc::IDynamicObject* payload)
     {
 
-      oracle_.Submit(new WebServiceGetCommand(callback, parameters_, uri, payload));
+      oracle_.Submit(new WebServiceGetCommand(observer, tracker, parameters_, uri, payload));
     }
 
-    virtual void SchedulePostRequest(ICallback& callback,
+    virtual void SchedulePostRequest(IWebServiceObserver* observer,
+                                     boost::shared_ptr<boost::noncopyable> tracker,
                                      const std::string& uri,
                                      const std::string& body,
                                      Orthanc::IDynamicObject* payload)
     {
-      oracle_.Submit(new WebServicePostCommand(callback, parameters_, uri, body, payload));
+      oracle_.Submit(new WebServicePostCommand(observer, tracker, parameters_, uri, body, payload));
     }
 
     void Start()

@@ -29,15 +29,15 @@ namespace OrthancStone
 {
   class StructureSetLoader :
     public VolumeLoaderBase,
-    private IWebService::ICallback
+    private IWebService::IWebServiceObserver
   {
   private:
     class Operation;
     
-    virtual void NotifyError(const std::string& uri,
+    virtual void OnRequestError(const std::string& uri,
                              Orthanc::IDynamicObject* payload);
 
-    virtual void NotifySuccess(const std::string& uri,
+    virtual void OnRequestSuccess(const std::string& uri,
                                const void* answer,
                                size_t answerSize,
                                Orthanc::IDynamicObject* payload);

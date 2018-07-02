@@ -24,23 +24,33 @@
 #include <Core/IDynamicObject.h>
 
 #include <string>
+#include <boost/shared_ptr.hpp>
+#include <boost/signals2.hpp>
 
 namespace OrthancStone
 {
   class IWebService : public boost::noncopyable
   {
   public:
-    class ICallback : public boost::noncopyable
+    class IWebServiceObserver : public boost::noncopyable
     {
     public:
-      virtual ~ICallback()
+        typedef boost::signals2::signal<void (const std::string& uri,
+                                    Orthanc::IDynamicObject* payload)> SignalErrorType;
+        typedef boost::signals2::signal<void (const std::string& uri,
+                                      const void* answer,
+                                      size_t answerSize,
+                                      Orthanc::IDynamicObject* payload)> SignalSuccessType;
+
+    public:
+      virtual ~IWebServiceObserver()
       {
       }
 
-      virtual void NotifyError(const std::string& uri,
+      virtual void OnRequestError(const std::string& uri,
                                Orthanc::IDynamicObject* payload) = 0;
 
-      virtual void NotifySuccess(const std::string& uri,
+      virtual void OnRequestSuccess(const std::string& uri,
                                  const void* answer,
                                  size_t answerSize,
                                  Orthanc::IDynamicObject* payload) = 0;
@@ -50,11 +60,13 @@ namespace OrthancStone
     {
     }
 
-    virtual void ScheduleGetRequest(ICallback& callback,
+    virtual void ScheduleGetRequest(IWebServiceObserver* observer,
+                                    boost::shared_ptr<boost::noncopyable> tracker,
                                     const std::string& uri,
                                     Orthanc::IDynamicObject* payload) = 0;
 
-    virtual void SchedulePostRequest(ICallback& callback,
+    virtual void SchedulePostRequest(IWebServiceObserver* observer,
+                                     boost::shared_ptr<boost::noncopyable> tracker,
                                      const std::string& uri,
                                      const std::string& body,
                                      Orthanc::IDynamicObject* payload) = 0;

@@ -175,6 +175,7 @@ list(APPEND ORTHANC_STONE_SOURCES
   ${ORTHANC_STONE_ROOT}/Framework/Layers/DicomStructureSetRendererFactory.cpp
   ${ORTHANC_STONE_ROOT}/Framework/Layers/FrameRenderer.cpp
   ${ORTHANC_STONE_ROOT}/Framework/Layers/GrayscaleFrameRenderer.cpp
+  ${ORTHANC_STONE_ROOT}/Framework/Layers/ILayerSource.h
   ${ORTHANC_STONE_ROOT}/Framework/Layers/LayerSourceBase.cpp
   ${ORTHANC_STONE_ROOT}/Framework/Layers/LineLayerRenderer.cpp
   ${ORTHANC_STONE_ROOT}/Framework/Layers/LineMeasureTracker.cpp
@@ -206,7 +207,7 @@ list(APPEND ORTHANC_STONE_SOURCES
   ${ORTHANC_STONE_ROOT}/Framework/Viewport/WidgetViewport.cpp
   ${ORTHANC_STONE_ROOT}/Framework/Volumes/ImageBuffer3D.cpp
   ${ORTHANC_STONE_ROOT}/Framework/Volumes/SlicedVolumeBase.cpp
-  ${ORTHANC_STONE_ROOT}/Framework/Volumes/StructureSetLoader.cpp
+#  ${ORTHANC_STONE_ROOT}/Framework/Volumes/StructureSetLoader.cpp
   ${ORTHANC_STONE_ROOT}/Framework/Volumes/VolumeLoaderBase.cpp
   ${ORTHANC_STONE_ROOT}/Framework/Volumes/VolumeReslicer.cpp
   ${ORTHANC_STONE_ROOT}/Framework/Widgets/CairoWidget.cpp

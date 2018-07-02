@@ -24,15 +24,18 @@
 #include "LayerSourceBase.h"
 #include "../Toolbox/IWebService.h"
 #include "../Toolbox/OrthancSlicesLoader.h"
+#include <boost/shared_ptr.hpp>
+#include <boost/enable_shared_from_this.hpp>
 
 namespace OrthancStone
 {  
   class OrthancFrameLayerSource :
     public LayerSourceBase,
-    private OrthancSlicesLoader::ICallback
+    public OrthancSlicesLoader::IObserver,
+      public boost::enable_shared_from_this<OrthancFrameLayerSource>
   {
   private:
-    OrthancSlicesLoader  loader_;
+    boost::shared_ptr<OrthancSlicesLoader> loader_;
     SliceImageQuality    quality_;
 
     virtual void NotifyGeometryReady(const OrthancSlicesLoader& loader);
@@ -51,8 +54,11 @@ namespace OrthancStone
                                        SliceImageQuality quality);
 
   public:
-    OrthancFrameLayerSource(IWebService& orthanc);
+    OrthancFrameLayerSource();
+    void Init(IWebService& orthanc);
+    virtual ~OrthancFrameLayerSource() {
 
+    }
     void LoadSeries(const std::string& seriesId);
 
     void LoadInstance(const std::string& instanceId);
@@ -67,12 +73,12 @@ namespace OrthancStone
 
     size_t GetSliceCount() const
     {
-      return loader_.GetSliceCount();
+      return loader_->GetSliceCount();
     }
 
     const Slice& GetSlice(size_t slice) const 
     {
-      return loader_.GetSlice(slice);
+      return loader_->GetSlice(slice);
     }
 
     virtual bool GetExtent(std::vector<Vector>& points,

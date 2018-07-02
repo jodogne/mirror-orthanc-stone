@@ -27,65 +27,64 @@ namespace OrthancStone
 {
   namespace
   {
-    class LayerReadyFunctor : public boost::noncopyable
-    {
-    private:
-      std::auto_ptr<ILayerRenderer>  layer_;
-      const CoordinateSystem3D&      slice_;
-      bool                           isError_;
+//    class LayerReadyFunctor : public boost::noncopyable
+//    {
+//    private:
+//      std::auto_ptr<ILayerRenderer>  layer_;
+//      const CoordinateSystem3D&      slice_;
+//      bool                           isError_;
       
-    public:
-      LayerReadyFunctor(ILayerRenderer* layer,
-                        const CoordinateSystem3D& slice,
-                        bool isError) :
-        layer_(layer),
-        slice_(slice),
-        isError_(isError)
-      {
-      }
+//    public:
+//      LayerReadyFunctor(ILayerRenderer* layer,
+//                        const CoordinateSystem3D& slice,
+//                        bool isError) :
+//        layer_(layer),
+//        slice_(slice),
+//        isError_(isError)
+//      {
+//      }
 
-      void operator() (ILayerSource::IObserver& observer,
-                       const ILayerSource& source)
-      {
-        observer.NotifyLayerReady(layer_, source, slice_, isError_);
-      }
-    };
+//      void operator() (ILayerSource::IObserver& observer,
+//                       const ILayerSource& source)
+//      {
+//        observer.NotifyLayerReady(layer_, source, slice_, isError_);
+//      }
+//    };
   }
 
   void LayerSourceBase::NotifyGeometryReady()
   {
-    //new observers
     SignalGeometryReady(*this);
-
-    //old observers
-    observers_.Apply(*this, &IObserver::NotifyGeometryReady);
   }
     
   void LayerSourceBase::NotifyGeometryError()
   {
-    observers_.Apply(*this, &IObserver::NotifyGeometryError);
+    SignalGeometryError(*this);
   }  
     
   void LayerSourceBase::NotifyContentChange()
   {
-    observers_.Apply(*this, &IObserver::NotifyContentChange);
+    SignalContentChange(*this);
   }
 
   void LayerSourceBase::NotifySliceChange(const Slice& slice)
   {
-    observers_.Apply(*this, &IObserver::NotifySliceChange, slice);
+    SignalSliceChange(*this, slice);
   }
 
-  void LayerSourceBase::NotifyLayerReady(ILayerRenderer* layer,
+  void LayerSourceBase::NotifyLayerReady(boost::shared_ptr<ILayerRenderer> renderer,
                                          const CoordinateSystem3D& slice,
                                          bool isError)
   {
-    LayerReadyFunctor functor(layer, slice, isError);
-    observers_.Notify(*this, functor);
+    SignalLayerReady(renderer, *this, slice, isError);
   }
 
-  void LayerSourceBase::Register(IObserver& observer)
+  void LayerSourceBase::Register(boost::shared_ptr<IObserver> observer)
   {
-    observers_.Register(observer);
+    SignalGeometryReady.connect(LayerSourceBase::SignalGeometryReadyType::slot_type(&IObserver::NotifyGeometryReady, observer.get(), _1).track(observer));
+    SignalGeometryError.connect(LayerSourceBase::SignalGeometryErrorType::slot_type(&IObserver::NotifyGeometryError, observer.get(), _1).track(observer));
+    SignalContentChange.connect(LayerSourceBase::SignalContentChangeType::slot_type(&IObserver::NotifyContentChange, observer.get(), _1).track(observer));
+    SignalSliceChange.connect(LayerSourceBase::SignalSliceChangeType::slot_type(&IObserver::NotifySliceChange, observer.get(), _1, _2).track(observer));
+    SignalLayerReady.connect(LayerSourceBase::SignalLayerReadyType::slot_type(&IObserver::NotifyLayerReady, observer.get(), _1, _2, _3, _4).track(observer));
   }
 }

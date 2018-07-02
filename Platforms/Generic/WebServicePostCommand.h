@@ -34,7 +34,7 @@ namespace OrthancStone
   class WebServicePostCommand : public IOracleCommand
   {
   private:
-    IWebService::ICallback&                 callback_;
+    IWebService::IWebServiceObserver*       observer_;
     Orthanc::WebServiceParameters           parameters_;
     std::string                             uri_;
     std::string                             body_;
@@ -43,7 +43,8 @@ namespace OrthancStone
     std::string                             answer_;
 
   public:
-    WebServicePostCommand(IWebService::ICallback& callback,
+    WebServicePostCommand(IWebService::IWebServiceObserver* observer,
+                          boost::shared_ptr<boost::noncopyable> tracker,
                           const Orthanc::WebServiceParameters& parameters,
                           const std::string& uri,
                           const std::string& body,
@@ -52,5 +53,10 @@ namespace OrthancStone
     virtual void Execute();
 
     virtual void Commit();
+
+  private:
+
+    IWebService::IWebServiceObserver::SignalSuccessType SignalSuccess;
+    IWebService::IWebServiceObserver::SignalErrorType SignalError;
   };
 }

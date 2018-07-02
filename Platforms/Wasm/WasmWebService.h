@@ -24,11 +24,13 @@ namespace OrthancStone
 
     void SetBaseUrl(const std::string base);
 
-    virtual void ScheduleGetRequest(ICallback& callback,
+    virtual void ScheduleGetRequest(IWebServiceObserver* observer,
+                                    boost::shared_ptr<boost::noncopyable> tracker,
                                     const std::string& uri,
                                     Orthanc::IDynamicObject* payload);
 
-    virtual void SchedulePostRequest(ICallback& callback,
+    virtual void SchedulePostRequest(IWebServiceObserver* observer,
+                                     boost::shared_ptr<boost::noncopyable> tracker,
                                      const std::string& uri,
                                      const std::string& body,
                                      Orthanc::IDynamicObject* payload);

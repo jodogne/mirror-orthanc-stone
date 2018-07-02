@@ -24,15 +24,16 @@
 #include "ILayerSource.h"
 #include "../Toolbox/ObserversRegistry.h"
 #include <boost/signals2.hpp>
+#include <boost/shared_ptr.hpp>
 
 namespace OrthancStone
 {
   class LayerSourceBase : public ILayerSource
   {
   private:
-    typedef ObserversRegistry<ILayerSource, IObserver>  Observers;
+    //typedef ObserversRegistry<ILayerSource, IObserver>  Observers;
 
-    Observers  observers_;
+    //Observers  observers_;
 
   protected:
     void NotifyGeometryReady();
@@ -43,12 +44,32 @@ namespace OrthancStone
 
     void NotifySliceChange(const Slice& slice);
 
-    void NotifyLayerReady(ILayerRenderer* layer,
+    void NotifyLayerReady(boost::shared_ptr<ILayerRenderer> renderer,
                           const CoordinateSystem3D& slice,
                           bool isError);
 
   public:
-    virtual void Register(IObserver& observer);
-    boost::signals2::signal<void (const ILayerSource& source)> SignalGeometryReady;
+    virtual void Register(boost::shared_ptr<IObserver> observer);
+
+  protected:
+    typedef boost::signals2::signal<void (const ILayerSource& source)> SignalGeometryReadyType;
+    typedef boost::signals2::signal<void (const ILayerSource& source)> SignalGeometryErrorType;
+    typedef boost::signals2::signal<void (const ILayerSource& source)> SignalContentChangeType;
+    typedef boost::signals2::signal<void (const ILayerSource& source,
+                                  const Slice& slice)> SignalSliceChangeType;
+    typedef boost::signals2::signal<void (boost::shared_ptr<ILayerRenderer> renderer,
+                                  const ILayerSource& source,
+                                  const CoordinateSystem3D& slice,
+                                  bool isError)> SignalLayerReadyType;
+
+    SignalGeometryReadyType SignalGeometryReady;
+    SignalGeometryErrorType SignalGeometryError;
+    SignalContentChangeType SignalContentChange;
+    SignalSliceChangeType SignalSliceChange;
+    SignalLayerReadyType SignalLayerReady;
+
+
+    //boost::signals2::signal<void (const ILayerSource& source)> SignalGeometryError;
+
   };
 }

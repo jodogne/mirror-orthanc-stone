@@ -16,35 +16,35 @@ extern "C" {
                                                  size_t bodySize,
                                                  void* payload);
 
-  void EMSCRIPTEN_KEEPALIVE WasmWebService_NotifyError(void* callback,
+  void EMSCRIPTEN_KEEPALIVE WasmWebService_NotifyError(void* observer,
                                                        const char* uri,
                                                        void* payload)
   {
-    if (callback == NULL)
+    if (observer == NULL)
     {
       throw;
     }
     else
     {
-      reinterpret_cast<OrthancStone::IWebService::ICallback*>(callback)->
-        NotifyError(uri, reinterpret_cast<Orthanc::IDynamicObject*>(payload));
+      reinterpret_cast<OrthancStone::IWebService::IWebServiceObserver*>(observer)->
+        OnRequestError(uri, reinterpret_cast<Orthanc::IDynamicObject*>(payload));
     }
   }
 
-  void EMSCRIPTEN_KEEPALIVE WasmWebService_NotifySuccess(void* callback,
+  void EMSCRIPTEN_KEEPALIVE WasmWebService_NotifySuccess(void* observer,
                                                          const char* uri,
                                                          const void* body,
                                                          size_t bodySize,
                                                          void* payload)
   {
-    if (callback == NULL)
+    if (observer == NULL)
     {
       throw;
     }
     else
     {
-      reinterpret_cast<OrthancStone::IWebService::ICallback*>(callback)->
-        NotifySuccess(uri, body, bodySize, reinterpret_cast<Orthanc::IDynamicObject*>(payload)); 
+      reinterpret_cast<OrthancStone::IWebService::IWebServiceObserver*>(observer)->
+        OnRequestSuccess(uri, body, bodySize, reinterpret_cast<Orthanc::IDynamicObject*>(payload)); 
    }
   }
 
@@ -75,21 +75,23 @@ namespace OrthancStone
     }
   }
 
-  void WasmWebService::ScheduleGetRequest(ICallback& callback,
+  void WasmWebService::ScheduleGetRequest(IWebServiceObserver* observer,
+                                          boost::shared_ptr<boost::noncopyable> tracker,
                                           const std::string& uri,
                                           Orthanc::IDynamicObject* payload)
   {
     std::string url = base_ + uri;
-    WasmWebService_ScheduleGetRequest(&callback, url.c_str(), payload);
+    WasmWebService_ScheduleGetRequest(observer, url.c_str(), payload);
   }
 
-  void WasmWebService::SchedulePostRequest(ICallback& callback,
+  void WasmWebService::SchedulePostRequest(IWebServiceObserver* observer,
+                                           boost::shared_ptr<boost::noncopyable> tracker,
                                            const std::string& uri,
                                            const std::string& body,
                                            Orthanc::IDynamicObject* payload)
   {
     std::string url = base_ + uri;
-    WasmWebService_SchedulePostRequest(&callback, url.c_str(),
+    WasmWebService_SchedulePostRequest(observer, url.c_str(),
                                        body.c_str(), body.size(), payload);
   }
 }

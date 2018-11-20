@@ -27,6 +27,7 @@
 #include "Framework/StoneException.h"
 #include "Framework/Layers/FrameRenderer.h"
 #include "Core/Logging.h"
+#include "Radiography/RadiographyScene.h"
 
 namespace OrthancStone
 {
@@ -62,6 +63,8 @@ namespace OrthancStone
     
     unsigned int                    sliceIndex_;
     std::auto_ptr<Slice>            slice_;
+    std::auto_ptr<OrthancPlugins::FullOrthancDataset> dicomTags_;
+
     boost::shared_ptr<Orthanc::ImageAccessor>   image_;
     SliceImageQuality               effectiveQuality_;
     CachedSliceStatus               status_;
@@ -95,6 +98,7 @@ namespace OrthancStone
         LOG(WARNING) << "ScheduleLayerCreation for CachedSlice (image is loaded): " << slice_->GetOrthancInstanceId();
 
         RendererFactory factory(*this);   
+        EmitMessage(IVolumeSlicer::FrameReadyMessage(*this, image_));
         EmitMessage(IVolumeSlicer::LayerReadyMessage(*this, factory, slice_->GetGeometry()));
       }
       else
@@ -127,38 +131,69 @@ namespace OrthancStone
   {
   }
 
+  void SmartLoader::SetFrameInRadiographyScene(RadiographyScene& scene, const std::string& instanceId, unsigned int frame)
+  {
+    // create the frame loader
+    std::auto_ptr<IVolumeSlicer> layerSource(GetFrameLoader(instanceId, frame));
+    IVolumeSlicer* layerSource2 = layerSource.get();
+
+    // make sure that the widget registers the events before we trigger them (once we start loading the frame)
+    scene.SetFrame(layerSource.release());
+
+    // start loading
+    LoadFrame(layerSource2, instanceId, frame);
+  }
+
+
+  IVolumeSlicer* SmartLoader::GetFrameLoader(const std::string &instanceId, unsigned int frame)
+  {
+    std::auto_ptr<IVolumeSlicer> layerSource;
+    std::string sliceKeyId = instanceId + ":" + boost::lexical_cast<std::string>(frame);
+
+
+    if (cachedSlices_.find(sliceKeyId) != cachedSlices_.end()) // && cachedSlices_[sliceKeyId]->status_ == CachedSliceStatus_Loaded)
+    { // if the image is cached, return a clone of the cached image
+      layerSource.reset(cachedSlices_[sliceKeyId]->Clone());
+    }
+    else
+    { // return a standard frame loader
+      layerSource.reset(new DicomSeriesVolumeSlicer(IObserver::GetBroker(), orthancApiClient_));
+      dynamic_cast<DicomSeriesVolumeSlicer*>(layerSource.get())->SetImageQuality(imageQuality_);
+      layerSource->RegisterObserverCallback(new Callable<SmartLoader, IVolumeSlicer::TagsReadyMessage>(*this, &SmartLoader::OnLayerTagsReady));
+      layerSource->RegisterObserverCallback(new Callable<SmartLoader, DicomSeriesVolumeSlicer::FrameReadyMessage>(*this, &SmartLoader::OnFrameReady));
+      layerSource->RegisterObserverCallback(new Callable<SmartLoader, IVolumeSlicer::LayerReadyMessage>(*this, &SmartLoader::OnLayerReady));
+    }
+
+    return layerSource.release();
+  }
+
+  void SmartLoader::LoadFrame(IVolumeSlicer *frameLoader, const std::string &instanceId, unsigned int frame)
+  {
+    SmartLoader::CachedSlice* cachedSlice = dynamic_cast<SmartLoader::CachedSlice*>(frameLoader);
+
+    if (cachedSlice != NULL)
+    {
+      EmitMessage(IVolumeSlicer::GeometryReadyMessage(*cachedSlice));
+      EmitMessage(IVolumeSlicer::TagsReadyMessage(*cachedSlice, *(cachedSlice->dicomTags_.get())));
+    }
+    else
+    {
+      DicomSeriesVolumeSlicer* volumeLoader = dynamic_cast<DicomSeriesVolumeSlicer*>(frameLoader);
+      volumeLoader->LoadFrame(instanceId, frame);
+    }
+
+  }
+
   void SmartLoader::SetFrameInWidget(SliceViewerWidget& sliceViewer, 
                                      size_t layerIndex, 
                                      const std::string& instanceId, 
                                      unsigned int frame)
   {
-    // TODO: check if this frame has already been loaded or is already being loaded.
-    // - if already loaded: create a "clone" that will emit the GeometryReady/ImageReady messages "immediately"
-    //   (it can not be immediate because Observers needs to register first and this is done after this method returns)
-    // - if currently loading, we need to return an object that will observe the existing VolumeSlicer and forward
-    //   the messages to its observables
-    // in both cases, we must be carefull about objects lifecycle !!!
+    // create the frame loader
+    std::auto_ptr<IVolumeSlicer> layerSource(GetFrameLoader(instanceId, frame));
+    IVolumeSlicer* layerSource2 = layerSource.get();
 
-    std::auto_ptr<IVolumeSlicer> layerSource;
-    std::string sliceKeyId = instanceId + ":" + boost::lexical_cast<std::string>(frame);
-    SmartLoader::CachedSlice* cachedSlice = NULL;
-
-    if (cachedSlices_.find(sliceKeyId) != cachedSlices_.end()) // && cachedSlices_[sliceKeyId]->status_ == CachedSliceStatus_Loaded)
-    {
-      layerSource.reset(cachedSlices_[sliceKeyId]->Clone());
-      cachedSlice = dynamic_cast<SmartLoader::CachedSlice*>(layerSource.get());
-    }
-    else
-    {
-      layerSource.reset(new DicomSeriesVolumeSlicer(IObserver::GetBroker(), orthancApiClient_));
-      dynamic_cast<DicomSeriesVolumeSlicer*>(layerSource.get())->SetImageQuality(imageQuality_);
-      layerSource->RegisterObserverCallback(new Callable<SmartLoader, IVolumeSlicer::GeometryReadyMessage>(*this, &SmartLoader::OnLayerGeometryReady));
-      layerSource->RegisterObserverCallback(new Callable<SmartLoader, DicomSeriesVolumeSlicer::FrameReadyMessage>(*this, &SmartLoader::OnFrameReady));
-      layerSource->RegisterObserverCallback(new Callable<SmartLoader, IVolumeSlicer::LayerReadyMessage>(*this, &SmartLoader::OnLayerReady));
-      dynamic_cast<DicomSeriesVolumeSlicer*>(layerSource.get())->LoadFrame(instanceId, frame);
-    }
-
-    // make sure that the widget registers the events before we trigger them
+    // make sure that the widget registers the events before we trigger them (once we start loading the frame)
     if (sliceViewer.GetLayerCount() == layerIndex)
     {
       sliceViewer.AddLayer(layerSource.release());
@@ -172,11 +207,8 @@ namespace OrthancStone
       throw StoneException(ErrorCode_CanOnlyAddOneLayerAtATime);
     }
 
-    if (cachedSlice != NULL)
-    {
-      EmitMessage(IVolumeSlicer::GeometryReadyMessage(*cachedSlice));
-    }
-
+    // start loading
+    LoadFrame(layerSource2, instanceId, frame);
   }
 
   void SmartLoader::PreloadSlice(const std::string instanceId, 
@@ -201,7 +233,7 @@ namespace OrthancStone
     std::auto_ptr<IVolumeSlicer> layerSource(new DicomSeriesVolumeSlicer(IObserver::GetBroker(), orthancApiClient_));
 
     dynamic_cast<DicomSeriesVolumeSlicer*>(layerSource.get())->SetImageQuality(imageQuality_);
-    layerSource->RegisterObserverCallback(new Callable<SmartLoader, IVolumeSlicer::GeometryReadyMessage>(*this, &SmartLoader::OnLayerGeometryReady));
+    layerSource->RegisterObserverCallback(new Callable<SmartLoader, IVolumeSlicer::TagsReadyMessage>(*this, &SmartLoader::OnLayerTagsReady));
     layerSource->RegisterObserverCallback(new Callable<SmartLoader, DicomSeriesVolumeSlicer::FrameReadyMessage>(*this, &SmartLoader::OnFrameReady));
     layerSource->RegisterObserverCallback(new Callable<SmartLoader, IVolumeSlicer::LayerReadyMessage>(*this, &SmartLoader::OnLayerReady));
     dynamic_cast<DicomSeriesVolumeSlicer*>(layerSource.get())->LoadFrame(instanceId, frame);
@@ -222,7 +254,7 @@ namespace OrthancStone
 //  }
 
 
-  void SmartLoader::OnLayerGeometryReady(const IVolumeSlicer::GeometryReadyMessage& message)
+  void SmartLoader::OnLayerTagsReady(const IVolumeSlicer::TagsReadyMessage& message)
   {
     const DicomSeriesVolumeSlicer& source =
       dynamic_cast<const DicomSeriesVolumeSlicer&>(message.GetOrigin());
@@ -238,11 +270,12 @@ namespace OrthancStone
     cachedSlice->slice_.reset(slice.Clone());
     cachedSlice->effectiveQuality_ = source.GetImageQuality();
     cachedSlice->status_ = CachedSliceStatus_GeometryLoaded;
+    cachedSlice->dicomTags_.reset(message.GetDicomTags().Clone());
 
     cachedSlices_[sliceKeyId] = boost::shared_ptr<CachedSlice>(cachedSlice);
 
     // re-emit original Layer message to observers
-    EmitMessage(message);
+    // EmitMessage(message);
   }
 
 
@@ -264,7 +297,7 @@ namespace OrthancStone
     cachedSlices_[sliceKeyId] = cachedSlice;
 
     // re-emit original Layer message to observers
-    EmitMessage(message);
+//    EmitMessage(IVolumeSlicer::FrameReadyMessage(*(cachedSlice.get()), cachedSlice->image_));
   }
 
 
@@ -286,6 +319,6 @@ namespace OrthancStone
     }
 
     // re-emit original Layer message to observers
-    EmitMessage(message);
+//    EmitMessage(message);
   }
 }

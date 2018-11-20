@@ -31,6 +31,7 @@
 #include "../../Framework/Radiography/RadiographySceneCommand.h"
 #include "../../Framework/Radiography/RadiographyWidget.h"
 #include "../../Framework/Radiography/RadiographyWindowingTracker.h"
+#include "../../Framework/SmartLoader.h"
 
 #include <Core/HttpClient.h>
 #include <Core/Images/FontRegistry.h>
@@ -382,6 +383,7 @@ namespace OrthancStone
     private:
       std::auto_ptr<RadiographyScene>  scene_;
       RadiographyEditorInteractor      interactor_;
+      std::auto_ptr<SmartLoader>       smartLoader_;
 
     public:
       SingleFrameEditorApplication(MessageBroker& broker) :
@@ -443,9 +445,13 @@ namespace OrthancStone
         Orthanc::FontRegistry fonts;
         fonts.AddFromResource(Orthanc::EmbeddedResources::FONT_UBUNTU_MONO_BOLD_16);
         
+        smartLoader_.reset(new SmartLoader(IObserver::GetBroker(), context->GetOrthancApiClient()));
+        smartLoader_->SetImageQuality(SliceImageQuality_FullPam);
+
         scene_.reset(new RadiographyScene(GetBroker()));
         //scene_->LoadDicomFrame(instance, frame, false); //.SetPan(200, 0);
-        scene_->LoadDicomFrame(context->GetOrthancApiClient(), "61f3143e-96f34791-ad6bbb8d-62559e75-45943e1b", 0, false);
+        //scene_->LoadDicomFrame(context->GetOrthancApiClient(), "61f3143e-96f34791-ad6bbb8d-62559e75-45943e1b", 0, false);
+        smartLoader_->SetFrameInRadiographyScene(*scene_, "61f3143e-96f34791-ad6bbb8d-62559e75-45943e1b", 0);
 
 #if !defined(ORTHANC_ENABLE_WASM) || ORTHANC_ENABLE_WASM != 1
         Orthanc::HttpClient::ConfigureSsl(true, "/etc/ssl/certs/ca-certificates.crt");

@@ -26,16 +26,53 @@
 #include "../../Framework/Messages/IObservable.h"
 #include "../../Framework/Messages/IMessage.h"
 #include "Core/Images/Image.h"
+#include <Plugins/Samples/Common/FullOrthancDataset.h>
 #include <boost/shared_ptr.hpp>
 
 namespace OrthancStone
 {
+
   class IVolumeSlicer : public IObservable
   {
   public:
     typedef OriginMessage<MessageType_VolumeSlicer_GeometryReady, IVolumeSlicer>  GeometryReadyMessage;
     typedef OriginMessage<MessageType_VolumeSlicer_GeometryError, IVolumeSlicer>  GeometryErrorMessage;
     typedef OriginMessage<MessageType_VolumeSlicer_ContentChanged, IVolumeSlicer> ContentChangedMessage;
+
+    class TagsReadyMessage : public OriginMessage<MessageType_VolumeSlicer_TagsReady, IVolumeSlicer>
+    {
+    private:
+      const OrthancPlugins::FullOrthancDataset& dicomTags_;
+    public:
+      TagsReadyMessage(IVolumeSlicer& origin,
+                       const OrthancPlugins::FullOrthancDataset& dicomTags) :
+        OriginMessage(origin),
+        dicomTags_(dicomTags)
+      {
+      }
+
+      const OrthancPlugins::FullOrthancDataset& GetDicomTags() const
+      {
+        return dicomTags_;
+      }
+    };
+
+    class FrameReadyMessage : public OriginMessage<MessageType_VolumeSlicer_FrameReady, IVolumeSlicer>
+    {
+    private:
+      boost::shared_ptr<Orthanc::ImageAccessor> image_;
+    public:
+      FrameReadyMessage(IVolumeSlicer& origin, boost::shared_ptr<Orthanc::ImageAccessor> image) :
+        OriginMessage(origin),
+        image_(image)
+      {
+      }
+
+      boost::shared_ptr<Orthanc::ImageAccessor> GetImage() const
+      {
+        return image_;
+      }
+    };
 
     class SliceContentChangedMessage : public OriginMessage<MessageType_VolumeSlicer_SliceChanged, IVolumeSlicer>
     {
@@ -44,7 +81,7 @@ namespace OrthancStone
 
     public:
       SliceContentChangedMessage(IVolumeSlicer& origin,
-                          const Slice& slice) :
+                                 const Slice& slice) :
         OriginMessage(origin),
         slice_(slice)
       {
@@ -69,7 +106,7 @@ namespace OrthancStone
 
         virtual ILayerRenderer* CreateRenderer() const = 0;
       };
-    
+
     private:
       const IRendererFactory&    factory_;
       const CoordinateSystem3D&  slice_;

@@ -235,6 +235,7 @@ list(APPEND ORTHANC_STONE_SOURCES
   #${ORTHANC_STONE_ROOT}/Framework/Layers/SeriesFrameRendererFactory.cpp
   #${ORTHANC_STONE_ROOT}/Framework/Layers/SingleFrameRendererFactory.cpp
 
+  ${ORTHANC_STONE_ROOT}/Framework/dev.h
   ${ORTHANC_STONE_ROOT}/Framework/Layers/CircleMeasureTracker.cpp
   ${ORTHANC_STONE_ROOT}/Framework/Layers/ColorFrameRenderer.cpp
   ${ORTHANC_STONE_ROOT}/Framework/Layers/DicomSeriesVolumeSlicer.cpp
@@ -286,6 +287,7 @@ list(APPEND ORTHANC_STONE_SOURCES
   ${ORTHANC_STONE_ROOT}/Framework/Viewport/IViewport.h
   ${ORTHANC_STONE_ROOT}/Framework/Viewport/WidgetViewport.cpp
   ${ORTHANC_STONE_ROOT}/Framework/Volumes/ImageBuffer3D.cpp
+  ${ORTHANC_STONE_ROOT}/Framework/Volumes/ISlicedVolume.h
   ${ORTHANC_STONE_ROOT}/Framework/Volumes/StructureSetLoader.cpp
   ${ORTHANC_STONE_ROOT}/Framework/Volumes/VolumeReslicer.cpp
   ${ORTHANC_STONE_ROOT}/Framework/Widgets/CairoWidget.cpp

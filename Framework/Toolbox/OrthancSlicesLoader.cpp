@@ -189,7 +189,7 @@ namespace OrthancStone
   }
   
   
-  void OrthancSlicesLoader::SortAndFinalizeSlices()
+  void OrthancSlicesLoader::SortAndFinalizeSlices(const OrthancPlugins::FullOrthancDataset& dicomTags)
   {
     bool ok = false;
     
@@ -211,6 +211,7 @@ namespace OrthancStone
     {
       LOG(INFO) << "Loaded a series with " << slices_.GetSliceCount() << " slice(s)";
       EmitMessage(SliceGeometryReadyMessage(*this));
+      EmitMessage(SliceTagsReadyMessage(*this, dicomTags));
     }
     else
     {
@@ -236,6 +237,12 @@ namespace OrthancStone
     const Json::Value& series = message.GetJson();
     Json::Value::Members instances = series.getMemberNames();
     
+    if (instances.size() < 1)
+    {
+      throw Orthanc::OrthancException(Orthanc::ErrorCode_InexistentItem);
+    }
+    OrthancPlugins::FullOrthancDataset firstInstanceDataSet(series[instances[0]]);
+
     slices_.Reserve(instances.size());
     
     for (size_t i = 0; i < instances.size(); i++)
@@ -264,8 +271,8 @@ namespace OrthancStone
         }
       }
     }
-    
-    SortAndFinalizeSlices();
+
+    SortAndFinalizeSlices(firstInstanceDataSet);
   }
   
   void OrthancSlicesLoader::ParseInstanceGeometry(const OrthancApiClient::JsonResponseReadyMessage& message)
@@ -301,7 +308,7 @@ namespace OrthancStone
       }
     }
     
-    SortAndFinalizeSlices();
+    SortAndFinalizeSlices(dataset);
   }
   
   
@@ -324,6 +331,7 @@ namespace OrthancStone
       LOG(INFO) << "Loaded instance geometry " << instanceId;
       slices_.AddSlice(slice.release());
       EmitMessage(SliceGeometryReadyMessage(*this));
+      EmitMessage(SliceTagsReadyMessage(*this, dataset));
     }
     else
     {

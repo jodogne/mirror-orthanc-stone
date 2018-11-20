@@ -13,7 +13,7 @@
  * WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Affero General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU Affero General Public License
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  **/
@@ -23,6 +23,7 @@
 
 #include "../Messages/IObservable.h"
 #include "../Toolbox/Slice.h"
+#include <Plugins/Samples/Common/FullOrthancDataset.h>
 
 namespace OrthancStone
 {
@@ -30,12 +31,12 @@ namespace OrthancStone
   {
   public:
     typedef OriginMessage<MessageType_SlicedVolume_ContentChanged, ISlicedVolume> ContentChangedMessage;
-    typedef OriginMessage<MessageType_SlicedVolume_GeometryError, ISlicedVolume> GeometryErrorMessage;
     typedef OriginMessage<MessageType_SlicedVolume_GeometryReady, ISlicedVolume> GeometryReadyMessage;
+    typedef OriginMessage<MessageType_SlicedVolume_GeometryError, ISlicedVolume> GeometryErrorMessage;
     typedef OriginMessage<MessageType_SlicedVolume_VolumeReady, ISlicedVolume> VolumeReadyMessage;
 
     class SliceContentChangedMessage :
-      public OriginMessage<MessageType_SlicedVolume_SliceContentChanged, ISlicedVolume>
+        public OriginMessage<MessageType_SlicedVolume_SliceContentChanged, ISlicedVolume>
     {
     private:
       size_t        sliceIndex_;

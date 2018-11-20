@@ -29,6 +29,7 @@
 namespace OrthancStone
 {
   class SliceViewerWidget;
+  class RadiographyScene;
 
   class SmartLoader : public IObservable, public IObserver
   {
@@ -57,11 +58,15 @@ namespace OrthancStone
 
     void GetFirstInstanceIdForSeries(std::string& output, const std::string& seriesId);
 
+    void SetFrameInRadiographyScene(RadiographyScene& scene, const std::string& instanceId, unsigned int frame);
+
   private:
-    void OnLayerGeometryReady(const IVolumeSlicer::GeometryReadyMessage& message);
+    void OnLayerTagsReady(const IVolumeSlicer::TagsReadyMessage& message);
     void OnFrameReady(const DicomSeriesVolumeSlicer::FrameReadyMessage& message);
     void OnLayerReady(const IVolumeSlicer::LayerReadyMessage& message);
 
+    IVolumeSlicer* GetFrameLoader(const std::string& instanceId, unsigned int frame);
+    void LoadFrame(IVolumeSlicer* frameLoader, const std::string &instanceId, unsigned int frame);
   };
 
 }

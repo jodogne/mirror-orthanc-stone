@@ -28,6 +28,7 @@
 #include "SlicesSorter.h"
 
 #include <Core/Images/Image.h>
+#include <Plugins/Samples/Common/FullOrthancDataset.h>
 
 
 namespace OrthancStone
@@ -39,8 +40,26 @@ namespace OrthancStone
     typedef OriginMessage<MessageType_SliceLoader_GeometryReady, OrthancSlicesLoader> SliceGeometryReadyMessage;
     typedef OriginMessage<MessageType_SliceLoader_GeometryError, OrthancSlicesLoader> SliceGeometryErrorMessage;
 
+    class SliceTagsReadyMessage : public OriginMessage<MessageType_SliceLoader_TagsReady, OrthancSlicesLoader>
+    {
+    private:
+      const OrthancPlugins::FullOrthancDataset& dicomTags_;
+    public:
+      SliceTagsReadyMessage(OrthancSlicesLoader& origin,
+                                const OrthancPlugins::FullOrthancDataset& dicomTags) :
+        OriginMessage(origin),
+        dicomTags_(dicomTags)
+      {
+      }
+
+      const OrthancPlugins::FullOrthancDataset& GetDicomTags() const
+      {
+        return dicomTags_;
+      }
+    };
+
     class SliceImageReadyMessage :
-      public OriginMessage<MessageType_SliceLoader_ImageReady, OrthancSlicesLoader>
+        public OriginMessage<MessageType_SliceLoader_ImageReady, OrthancSlicesLoader>
     {
     private:
       unsigned int                   sliceIndex_;
@@ -80,12 +99,12 @@ namespace OrthancStone
       SliceImageQuality GetEffectiveQuality() const
       {
         return effectiveQuality_;
-      }        
+      }
     };
     
 
-    class SliceImageErrorMessage : 
-      public OriginMessage<MessageType_SliceLoader_ImageError, OrthancSlicesLoader>
+    class SliceImageErrorMessage :
+        public OriginMessage<MessageType_SliceLoader_ImageError, OrthancSlicesLoader>
     {
     private:
       const Slice&       slice_;
@@ -116,7 +135,7 @@ namespace OrthancStone
       SliceImageQuality GetEffectiveQuality() const
       {
         return effectiveQuality_;
-      }        
+      }
     };
     
   private:
@@ -177,7 +196,7 @@ namespace OrthancStone
                                 size_t index,
                                 SliceImageQuality quality);
 
-    void SortAndFinalizeSlices();
+    void SortAndFinalizeSlices(const OrthancPlugins::FullOrthancDataset& dicomTags);
     
   public:
     OrthancSlicesLoader(MessageBroker& broker,

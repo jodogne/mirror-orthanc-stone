@@ -120,7 +120,9 @@ namespace OrthancStone
     MessageType_Widget_GeometryChanged,
     MessageType_Widget_ContentChanged,
 
-    MessageType_VolumeSlicer_GeometryReady,   // instance tags have been loaded
+    MessageType_VolumeSlicer_GeometryReady,   // instance geometry is available
+    MessageType_VolumeSlicer_TagsReady,       // instance tags are available
+    MessageType_VolumeSlicer_FrameReady,      // pixels data are available
     MessageType_VolumeSlicer_GeometryError,
     MessageType_VolumeSlicer_ContentChanged,
     MessageType_VolumeSlicer_SliceChanged,
@@ -132,6 +134,7 @@ namespace OrthancStone
     MessageType_SliceViewerWidget_DisplayedSlice,  // The displayed slice has changed
 
     MessageType_SliceLoader_GeometryReady,
+    MessageType_SliceLoader_TagsReady,
     MessageType_SliceLoader_GeometryError,
     MessageType_SliceLoader_ImageReady,
     MessageType_SliceLoader_ImageError,

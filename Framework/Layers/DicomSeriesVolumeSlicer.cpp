@@ -32,6 +32,11 @@
 namespace OrthancStone
 {
 
+  void DicomSeriesVolumeSlicer::OnSliceTagsReady(const OrthancSlicesLoader::SliceTagsReadyMessage& message)
+  {
+    EmitMessage(IVolumeSlicer::TagsReadyMessage(*this, message.GetDicomTags()));
+  }
+
   void DicomSeriesVolumeSlicer::OnSliceGeometryReady(const OrthancSlicesLoader::SliceGeometryReadyMessage& message)
   {
     if (message.GetOrigin().GetSliceCount() > 0)
@@ -94,6 +99,7 @@ namespace OrthancStone
     quality_(SliceImageQuality_FullPng)
   {
     loader_.RegisterObserverCallback(new Callable<DicomSeriesVolumeSlicer, OrthancSlicesLoader::SliceGeometryReadyMessage>(*this, &DicomSeriesVolumeSlicer::OnSliceGeometryReady));
+    loader_.RegisterObserverCallback(new Callable<DicomSeriesVolumeSlicer, OrthancSlicesLoader::SliceTagsReadyMessage>(*this, &DicomSeriesVolumeSlicer::OnSliceTagsReady));
     loader_.RegisterObserverCallback(new Callable<DicomSeriesVolumeSlicer, OrthancSlicesLoader::SliceGeometryErrorMessage>(*this, &DicomSeriesVolumeSlicer::OnSliceGeometryError));
     loader_.RegisterObserverCallback(new Callable<DicomSeriesVolumeSlicer, OrthancSlicesLoader::SliceImageReadyMessage>(*this, &DicomSeriesVolumeSlicer::OnSliceImageReady));
     loader_.RegisterObserverCallback(new Callable<DicomSeriesVolumeSlicer, OrthancSlicesLoader::SliceImageErrorMessage>(*this, &DicomSeriesVolumeSlicer::OnSliceImageError));

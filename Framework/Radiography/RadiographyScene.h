@@ -22,11 +22,14 @@
 #pragma once
 
 #include "RadiographyLayer.h"
+#include <Framework/Layers/IVolumeSlicer.h>
 #include "../Toolbox/OrthancApiClient.h"
 
 
 namespace OrthancStone
 {
+  class IVolumeSlicer;
+
   class RadiographyScene :
     public IObserver,
     public IObservable
@@ -80,6 +83,8 @@ namespace OrthancStone
     float   windowingWidth_;
     Layers  layers_;
 
+    std::map<const IVolumeSlicer*, size_t> layersIndexBySlice_;
+
     RadiographyLayer& RegisterLayer(RadiographyLayer* layer);
 
     void OnTagsReceived(const OrthancApiClient::BinaryResponseReadyMessage& message);
@@ -89,6 +94,10 @@ namespace OrthancStone
     void OnDicomExported(const OrthancApiClient::JsonResponseReadyMessage& message);
 
     void OnDicomWebReceived(const IWebService::HttpRequestSuccessMessage& message);
+
+    void OnTagsReady(const IVolumeSlicer::TagsReadyMessage& message);
+
+    void OnImageReady(const IVolumeSlicer::FrameReadyMessage& message);
 
   public:
     RadiographyScene(MessageBroker& broker);
@@ -116,6 +125,8 @@ namespace OrthancStone
                                      bool httpCompression);
 
     RadiographyLayer& LoadDicomWebFrame(IWebService& web);
+
+    RadiographyLayer& SetFrame(IVolumeSlicer* slice);
 
     Extent2D GetSceneExtent() const;
 

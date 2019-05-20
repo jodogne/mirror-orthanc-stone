@@ -116,8 +116,6 @@ export function InitializeWasmApplication(wasmModuleName: string, orthancBaseUrl
     CreateCppViewport = (<any> window).StoneFrameworkModule.cwrap('CreateCppViewport', 'number', []);
     ReleaseCppViewport = (<any> window).StoneFrameworkModule.cwrap('ReleaseCppViewport', null, ['number']);
     StartWasmApplication = (<any> window).StoneFrameworkModule.cwrap('StartWasmApplication', null, ['string']);
-    (<any> window).IsTraceLevelEnabled = (<any> window).StoneFrameworkModule.cwrap('WasmIsTraceLevelEnabled', 'boolean', null);
-    (<any> window).IsInfoLevelEnabled = (<any> window).StoneFrameworkModule.cwrap('WasmIsInfoLevelEnabled', 'boolean', null);
 
     (<any> window).WasmWebService_NotifyCachedSuccess = (<any> window).StoneFrameworkModule.cwrap('WasmWebService_NotifyCachedSuccess', null, ['number']);
     (<any> window).WasmWebService_NotifySuccess = (<any> window).StoneFrameworkModule.cwrap('WasmWebService_NotifySuccess', null, ['number', 'string', 'array', 'number', 'number']);

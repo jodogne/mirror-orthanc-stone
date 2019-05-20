@@ -73,23 +73,29 @@ function _InitializeWasmApplication(orthancBaseUrl: string): void {
 
   CreateWasmApplication();
 
-  // transmit the API-specified parameters to the app before initializing it
-  for (let key in auxiliaryParameters) {
-    if (auxiliaryParameters.hasOwnProperty(key)) {
-      Logger.defaultLogger.debug(
-        `About to call SetStartupParameter("${key}","${auxiliaryParameters[key]}")`);
-      SetStartupParameter(key, auxiliaryParameters[key]);
-    }
-  }
-
   // parse uri and transmit the URI parameters to the app before initializing it
   let parameters = GetUriParameters();
 
+  // merge params but give priority to URI parameters
+  var resultingParams : Map<string,string>;
+  
+  if (auxiliaryParameters == null) {
+    resultingParams = new Map<string,string>();
+  } else {
+    resultingParams = auxiliaryParameters;
+  }
+
   for (let key in parameters) {
     if (parameters.hasOwnProperty(key)) {
+      resultingParams[key] = parameters[key]
+    }
+  }
+
+  for (let key in resultingParams) {
+    if (resultingParams.hasOwnProperty(key)) {
       Logger.defaultLogger.debug(
-        `About to call SetStartupParameter("${key}","${parameters[key]}")`);
-      SetStartupParameter(key, parameters[key]);
+        `About to call SetStartupParameter("${key}","${resultingParams[key]}")`);
+      SetStartupParameter(key, resultingParams[key]);
     }
   }
 

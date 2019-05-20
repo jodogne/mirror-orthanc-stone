@@ -22,13 +22,24 @@ var ReleaseCppViewport: Function = null;
 var StartWasmApplication: Function = null;
 export var SendSerializedMessageToStoneApplication: Function = null;
 
+var auxiliaryParameters : Map<string,string>  = null;
+
+export function SetApplicationParameters(params : Map<string,string>) {
+  if (auxiliaryParameters != null) {
+    console.warn("wasm-application-runner.SetApplicationParameters: about to overwrite the existing application parameters!")
+  }
+  auxiliaryParameters = params;
+}
+
 function DoAnimationThread() {
   if (WasmDoAnimation != null) {
     WasmDoAnimation();
   }
 
-  setTimeout(DoAnimationThread, 100);  // Update the viewport content every 100ms if need be
+  // Update the viewport content every 100ms if need be
+  setTimeout(DoAnimationThread, 100);  
 }
+
 
 function GetUriParameters(): Map<string, string> {
   var parameters = window.location.search.substr(1);
@@ -42,10 +53,12 @@ function GetUriParameters(): Map<string, string> {
       var tmp = tokens[i].split('=');
       if (tmp.length == 2) {
         result[tmp[0]] = decodeURIComponent(tmp[1]);
+      } else if(tmp.length == 1) {
+        // if there is no '=', we treat ot afterwards as a flag-style param
+        result[tmp[0]] = "";
       }
     }
-
-    return result;
+  return result;
   }
   else {
     return new Map<string, string>();
@@ -60,11 +73,22 @@ function _InitializeWasmApplication(orthancBaseUrl: string): void {
 
   CreateWasmApplication();
 
-  // parse uri and transmit the parameters to the app before initializing it
+  // transmit the API-specified parameters to the app before initializing it
+  for (let key in auxiliaryParameters) {
+    if (auxiliaryParameters.hasOwnProperty(key)) {
+      Logger.defaultLogger.debug(
+        `About to call SetStartupParameter("${key}","${auxiliaryParameters[key]}")`);
+      SetStartupParameter(key, auxiliaryParameters[key]);
+    }
+  }
+
+  // parse uri and transmit the URI parameters to the app before initializing it
   let parameters = GetUriParameters();
 
   for (let key in parameters) {
     if (parameters.hasOwnProperty(key)) {
+      Logger.defaultLogger.debug(
+        `About to call SetStartupParameter("${key}","${parameters[key]}")`);
       SetStartupParameter(key, parameters[key]);
     }
   }
@@ -92,6 +116,8 @@ export function InitializeWasmApplication(wasmModuleName: string, orthancBaseUrl
     CreateCppViewport = (<any> window).StoneFrameworkModule.cwrap('CreateCppViewport', 'number', []);
     ReleaseCppViewport = (<any> window).StoneFrameworkModule.cwrap('ReleaseCppViewport', null, ['number']);
     StartWasmApplication = (<any> window).StoneFrameworkModule.cwrap('StartWasmApplication', null, ['string']);
+    (<any> window).IsTraceLevelEnabled = (<any> window).StoneFrameworkModule.cwrap('WasmIsTraceLevelEnabled', 'boolean', null);
+    (<any> window).IsInfoLevelEnabled = (<any> window).StoneFrameworkModule.cwrap('WasmIsInfoLevelEnabled', 'boolean', null);
 
     (<any> window).WasmWebService_NotifyCachedSuccess = (<any> window).StoneFrameworkModule.cwrap('WasmWebService_NotifyCachedSuccess', null, ['number']);
     (<any> window).WasmWebService_NotifySuccess = (<any> window).StoneFrameworkModule.cwrap('WasmWebService_NotifySuccess', null, ['number', 'string', 'array', 'number', 'number']);

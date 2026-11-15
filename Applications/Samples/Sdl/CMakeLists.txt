@@ -105,7 +105,7 @@ project(SdlSimpleViewer)
 
 add_executable(SdlSimpleViewer
   ../Common/SimpleViewerCore.cpp
-  SingleFrameViewer/SdlSimpleViewer.cpp
+  SdlSimpleViewer.cpp
   SingleViewportSdlApplication.cpp
   )
 

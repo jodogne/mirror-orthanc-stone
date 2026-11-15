@@ -20,19 +20,19 @@
  **/
 
 
-#include "../../../../OrthancStone/Sources/StoneException.h"
-#include "../../../../OrthancStone/Sources/StoneInitialization.h"
-#include "../../Common/SampleHelpers.h"
-#include "../../Common/SimpleViewerCore.h"
-#include "../SingleViewportSdlApplication.h"
+#include "../../../OrthancStone/Sources/StoneException.h"
+#include "../../../OrthancStone/Sources/StoneInitialization.h"
+#include "../Common/SampleHelpers.h"
+#include "../Common/SimpleViewerCore.h"
+#include "SingleViewportSdlApplication.h"
 
 #include <boost/program_options.hpp>
 
 
 // TODO Refactoring
-#include "../../../../OrthancStone/Sources/Oracle/ParseDicomFromFileCommand.h"
-#include "../../../../OrthancStone/Sources/Oracle/SleepOracleCommand.h"
-#include "../../../../OrthancStone/Sources/StoneApplication.h"
+#include "../../../OrthancStone/Sources/Oracle/ParseDicomFromFileCommand.h"
+#include "../../../OrthancStone/Sources/Oracle/SleepOracleCommand.h"
+
 
 namespace OrthancStone
 {

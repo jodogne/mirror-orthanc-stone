@@ -21,6 +21,7 @@
 
 
 #include "../../Common/SimpleViewerCore.h"
+#include "../../Common/VolumeViewerCore.h"   // TODO Refactoring - Remove
 
 #include "SingleFrameViewerApplication.h"
 
@@ -101,6 +102,29 @@ namespace OrthancStone
       return EM_FALSE; // Don't prevent the browser's default behavior
     }
 
+    static EM_BOOL OnWheel(int eventType,
+                           const EmscriptenWheelEvent *wheelEvent,
+                           void *userData)
+    {
+      SingleViewportWebAssemblyApplication& that = *reinterpret_cast<SingleViewportWebAssemblyApplication*>(userData);
+
+      const bool fast = wheelEvent->mouse.ctrlKey;
+
+      // Note that MouseWheelDirection is reversed wrt. WebAssembly
+      if (wheelEvent->deltaY < 0)
+      {
+        std::unique_ptr<IEnvironment::ILock> environmentLock(that.GetContext()->GetEnvironment().AcquireLock());
+        that.core_->HandleMouseWheel(*environmentLock, MouseWheelDirection_Up, fast);
+      }
+      else if (wheelEvent->deltaY > 0)
+      {
+        std::unique_ptr<IEnvironment::ILock> environmentLock(that.GetContext()->GetEnvironment().AcquireLock());
+        that.core_->HandleMouseWheel(*environmentLock, MouseWheelDirection_Down, fast);
+      }
+
+      return EM_TRUE;
+    }
+
   public:
     SingleViewportWebAssemblyApplication(const Configuration& configuration,
                                          const boost::shared_ptr<ISingleViewportApplicationCore>& core) :
@@ -146,6 +170,7 @@ namespace OrthancStone
         viewport_->GetController()->AcquireInteractor(core_->CreateMouseInteractor());
 
         emscripten_set_keydown_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, this, EM_FALSE, OnKeyDown);
+        emscripten_set_wheel_callback(viewport_->GetCanvasCssSelector().c_str(), this, EM_TRUE, OnWheel);
       }
     }
 
@@ -182,7 +207,9 @@ extern "C"
       configuration.SetLocalOrthancRoot("..");
       configuration.SetDicomCacheSize(128 * 1024 * 1024);  // 128MB
 
-      boost::shared_ptr<OrthancStone::SimpleViewerCore> core(new OrthancStone::SimpleViewerCore);
+      boost::shared_ptr<OrthancStone::ISingleViewportApplicationCore> core;
+      core.reset(new OrthancStone::SimpleViewerCore);
+      //core.reset(new OrthancStone::VolumeViewerCore);
       application2_.reset(new OrthancStone::SingleViewportWebAssemblyApplication(configuration, core));
 
 #if 0
@@ -202,6 +229,8 @@ extern "C"
     try
     {
       application2_->Setup(canvasId, true);
+
+      //dynamic_cast<OrthancStone::VolumeViewerCore&>(*application2_->GetCore()).LoadSeriesFromOrthanc(OrthancStone::VolumeProjection_Coronal, "a7e40137-e4b37f56-14ce875b-9a81702d-eac823bf");
 
 #if 0
       if (application_.get() != NULL)

@@ -119,6 +119,7 @@ target_link_libraries(SdlSimpleViewer OrthancStone ${DCMTK_LIBRARIES})
 project(SdlVolumeViewer)
 
 add_executable(SdlVolumeViewer
+  ../Common/VolumeViewerCore.cpp
   SdlVolumeViewer.cpp
   SingleViewportSdlApplication.cpp
   )

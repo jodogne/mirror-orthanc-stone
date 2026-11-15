@@ -150,6 +150,7 @@ project(SingleFrameViewerWasm)
 
 add_executable(SingleFrameViewerWasm
   ../Common/SimpleViewerCore.cpp
+  ../Common/VolumeViewerCore.cpp  # TODO Refactoring - Remove
   SingleFrameViewer/SingleFrameViewer.cpp
   )
 

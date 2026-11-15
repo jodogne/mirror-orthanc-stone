@@ -109,6 +109,7 @@ namespace OrthancStone
           // Lock to prevent oracle callbacks
           std::unique_ptr<IEnvironment::ILock> environmentLock(context->GetEnvironment().AcquireLock());
 
+          // Note that MouseWheelDirection is reversed wrt. WebAssembly
           if (event.wheel.y > 0)
           {
             core_->HandleMouseWheel(*environmentLock, MouseWheelDirection_Up, fast);

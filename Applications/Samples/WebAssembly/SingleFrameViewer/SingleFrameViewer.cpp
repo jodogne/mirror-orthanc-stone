@@ -23,8 +23,6 @@
 #include "../../Common/SimpleViewerCore.h"
 #include "../../Common/VolumeViewerCore.h"   // TODO Refactoring - Remove
 
-#include "SingleFrameViewerApplication.h"
-
 #include "../../../../OrthancStone/Sources/Platforms/WebAssembly/WebAssemblyCairoViewport.h"
 #include "../../../../OrthancStone/Sources/Platforms/WebAssembly/WebGLViewport.h"
 #include "../../../../OrthancStone/Sources/Platforms/WebAssembly/WebGLViewportsRegistry.h"
@@ -182,8 +180,7 @@ namespace OrthancStone
 }
 
 
-static boost::shared_ptr<OrthancStone::SingleViewportWebAssemblyApplication> application2_;
-static boost::shared_ptr<OrthancStone::SingleFrameViewerApplication>  application_;
+static boost::shared_ptr<OrthancStone::SingleViewportWebAssemblyApplication> application_;
 
 extern "C"
 {
@@ -210,7 +207,7 @@ extern "C"
       boost::shared_ptr<OrthancStone::ISingleViewportApplicationCore> core;
       core.reset(new OrthancStone::SimpleViewerCore);
       //core.reset(new OrthancStone::VolumeViewerCore);
-      application2_.reset(new OrthancStone::SingleViewportWebAssemblyApplication(configuration, core));
+      application_.reset(new OrthancStone::SingleViewportWebAssemblyApplication(configuration, core));
 
 #if 0
       OrthancStone::StoneApplication::Initialize(configuration);
@@ -228,31 +225,7 @@ extern "C"
   {
     try
     {
-      application2_->Setup(canvasId, true);
-
-      //dynamic_cast<OrthancStone::VolumeViewerCore&>(*application2_->GetCore()).LoadSeriesFromOrthanc(OrthancStone::VolumeProjection_Coronal, "a7e40137-e4b37f56-14ce875b-9a81702d-eac823bf");
-
-#if 0
-      if (application_.get() != NULL)
-      {
-        throw Orthanc::OrthancException(Orthanc::ErrorCode_BadSequenceOfCalls,
-                                        "Only one single viewport is available for this application");
-      }
-
-      boost::shared_ptr<OrthancStone::WebGLViewport> viewport(
-        OrthancStone::WebGLViewportsRegistry::GetGlobalRegistry().Add(canvasId));
-      application_ = OrthancStone::SingleFrameViewerApplication::Create(OrthancStone::StoneApplication::GetInstance(), viewport);
-
-      {
-        OrthancStone::WebGLViewportsRegistry::Accessor accessor(
-          OrthancStone::WebGLViewportsRegistry::GetGlobalRegistry(), canvasId);
-
-        if (accessor.IsValid())
-        {
-          accessor.GetViewport().Invalidate();
-        }
-      }
-#endif
+      application_->Setup(canvasId, true);
     }
     EXTERN_CATCH_EXCEPTIONS;
   }
@@ -264,15 +237,9 @@ extern "C"
   {
     try
     {
-      dynamic_cast<OrthancStone::SimpleViewerCore&>(*application2_->GetCore()).LoadFrameFromOrthanc(instance, frame);
+      //dynamic_cast<OrthancStone::VolumeViewerCore&>(*application_->GetCore()).LoadSeriesFromOrthanc(OrthancStone::VolumeProjection_Coronal, "a7e40137-e4b37f56-14ce875b-9a81702d-eac823bf");
 
-#if 0
-      if (application_.get() != NULL)
-      {
-        OrthancStone::DicomSource source;
-        application_->LoadOrthancFrame(source, instance, frame);
-      }
-#endif
+      dynamic_cast<OrthancStone::SimpleViewerCore&>(*application_->GetCore()).LoadFrameFromOrthanc(instance, frame);
     }
     EXTERN_CATCH_EXCEPTIONS;
   }
@@ -287,18 +254,8 @@ extern "C"
   {
     try
     {
-      dynamic_cast<OrthancStone::SimpleViewerCore&>(*application2_->GetCore()).LoadFrameFromDicomWeb(
+      dynamic_cast<OrthancStone::SimpleViewerCore&>(*application_->GetCore()).LoadFrameFromDicomWeb(
         server, studyInstanceUid, seriesInstanceUid, sopInstanceUid, frame);
-
-#if 0
-      if (application_.get() != NULL)
-      {
-        OrthancStone::DicomSource source;
-        source.SetDicomWebThroughOrthancSource(server);
-        application_->LoadDicomWebFrame(source, studyInstanceUid, seriesInstanceUid,
-                                        sopInstanceUid, frame);
-      }
-#endif
     }
     EXTERN_CATCH_EXCEPTIONS;
   }

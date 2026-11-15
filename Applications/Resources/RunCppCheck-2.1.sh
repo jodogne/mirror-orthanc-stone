@@ -32,7 +32,6 @@ cat <<EOF > /tmp/cppcheck-suppressions.txt
 assertWithSideEffect:../../OrthancStone/Sources/Loaders/OrthancMultiframeVolumeLoader.cpp:341
 assertWithSideEffect:../../OrthancStone/Sources/Loaders/OrthancMultiframeVolumeLoader.cpp:342
 constParameter:../../RenderingPlugin/Sources/Plugin.cpp:778
-stlFindInsert:../../Applications/Samples/WebAssembly/SingleFrameViewer/SingleFrameViewerApplication.h
 stlFindInsert:../../Applications/StoneWebViewer/WebAssembly/StoneWebViewer.cpp:1095
 stlFindInsert:../../Applications/StoneWebViewer/WebAssembly/StoneWebViewer.cpp:1828
 unpreciseMathCall:../../OrthancStone/Sources/Scene2D/Internals/CairoFloatTextureRenderer.cpp

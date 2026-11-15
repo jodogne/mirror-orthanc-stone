@@ -25,7 +25,6 @@
 #include "../../../OrthancStone/Sources/Scene2DViewport/ViewportController.h"
 #include "../../../OrthancStone/Sources/StoneApplication.h"
 #include "../../../OrthancStone/Sources/Viewport/IViewport.h"
-#include "../../../OrthancStone/Sources/Viewport/IViewportInteractor.h"
 
 
 namespace OrthancStone
@@ -39,8 +38,6 @@ namespace OrthancStone
 
     virtual void CreateComponents(const boost::shared_ptr<StoneApplication::Context>& context,
                                   const boost::shared_ptr<ViewportController>& controller) = 0;
-
-    virtual IViewportInteractor* CreateMouseInteractor() = 0;
 
     virtual void HandleKeyDown(const IEnvironment::ILock& environmentLock,
                                char key) = 0;

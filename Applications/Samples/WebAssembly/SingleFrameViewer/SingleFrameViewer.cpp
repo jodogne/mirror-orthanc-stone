@@ -20,8 +20,17 @@
  **/
 
 
-#include "../../Common/SimpleViewerCore.h"
-#include "../../Common/VolumeViewerCore.h"   // TODO Refactoring - Remove
+// TODO Refactoring - Remove
+#define TEST_SIMPLE_VIEWER  1
+#define TEST_VOLUME_VIEWER  0
+
+#if TEST_SIMPLE_VIEWER == 1
+#  include "../../Common/SimpleViewerCore.h"
+#endif
+
+#if TEST_VOLUME_VIEWER == 1
+#  include "../../Common/VolumeViewerCore.h"
+#endif
 
 #include "../../../../OrthancStone/Sources/Platforms/WebAssembly/WebAssemblyCairoViewport.h"
 #include "../../../../OrthancStone/Sources/Platforms/WebAssembly/WebGLViewport.h"
@@ -165,8 +174,6 @@ namespace OrthancStone
 
         core_->CreateComponents(GetContext(), viewport_->GetController());
 
-        viewport_->GetController()->AcquireInteractor(core_->CreateMouseInteractor());
-
         emscripten_set_keydown_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, this, EM_FALSE, OnKeyDown);
         emscripten_set_wheel_callback(viewport_->GetCanvasCssSelector().c_str(), this, EM_TRUE, OnWheel);
       }
@@ -205,14 +212,17 @@ extern "C"
       configuration.SetDicomCacheSize(128 * 1024 * 1024);  // 128MB
 
       boost::shared_ptr<OrthancStone::ISingleViewportApplicationCore> core;
-      //core.reset(new OrthancStone::SimpleViewerCore);
+
+#if TEST_SIMPLE_VIEWER == 1
+      core.reset(new OrthancStone::SimpleViewerCore);
+#endif
+
+#if TEST_VOLUME_VIEWER == 1
       core.reset(new OrthancStone::VolumeViewerCore);
+#endif
+
       application_.reset(new OrthancStone::SingleViewportWebAssemblyApplication(configuration, core));
 
-#if 0
-      OrthancStone::StoneApplication::Initialize(configuration);
-#endif
-  
       DISPATCH_JAVASCRIPT_EVENT("WasmModuleInitialized");
     }
     EXTERN_CATCH_EXCEPTIONS;
@@ -237,9 +247,13 @@ extern "C"
   {
     try
     {
-      dynamic_cast<OrthancStone::VolumeViewerCore&>(*application_->GetCore()).LoadSeriesFromOrthanc(OrthancStone::VolumeProjection_Coronal, "a7e40137-e4b37f56-14ce875b-9a81702d-eac823bf");
+#if TEST_SIMPLE_VIEWER == 1
+      dynamic_cast<OrthancStone::SimpleViewerCore&>(*application_->GetCore()).LoadFrameFromOrthanc(instance, frame);
+#endif
 
-      //dynamic_cast<OrthancStone::SimpleViewerCore&>(*application_->GetCore()).LoadFrameFromOrthanc(instance, frame);
+#if TEST_VOLUME_VIEWER == 1
+      dynamic_cast<OrthancStone::VolumeViewerCore&>(*application_->GetCore()).LoadSeriesFromOrthanc(OrthancStone::VolumeProjection_Coronal, "a7e40137-e4b37f56-14ce875b-9a81702d-eac823bf");
+#endif
     }
     EXTERN_CATCH_EXCEPTIONS;
   }
@@ -254,8 +268,10 @@ extern "C"
   {
     try
     {
+#if TEST_SIMPLE_VIEWER == 1
       dynamic_cast<OrthancStone::SimpleViewerCore&>(*application_->GetCore()).LoadFrameFromDicomWeb(
         server, studyInstanceUid, seriesInstanceUid, sopInstanceUid, frame);
+#endif
     }
     EXTERN_CATCH_EXCEPTIONS;
   }

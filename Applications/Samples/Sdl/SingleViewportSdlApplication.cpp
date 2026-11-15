@@ -37,8 +37,6 @@ namespace OrthancStone
     assert(core_.get() != NULL);
     core_->CreateComponents(context, controller_);
 
-    controller_->AcquireInteractor(core_->CreateMouseInteractor());
-
     if (startup_.get() != NULL)
     {
       startup_->Start(*core_);

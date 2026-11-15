@@ -39,146 +39,6 @@
 
 namespace OrthancStone
 {
-  void SimpleViewerCore::Handle(const New::IObservable& observable,
-                                const FrameDecodedMessage& message)
-  {
-    LOG(INFO) << "Frame decoded! "
-              << message.GetImage().GetWidth() << "x" << message.GetImage().GetHeight()
-              << " " << Orthanc::EnumerationToString(message.GetImage().GetFormat());
-
-    std::unique_ptr<TextureBaseSceneLayer> layer(
-      message.GetInstanceParameters().CreateTexture(message.GetImage()));
-    //layer->SetLinearInterpolation(true);
-    layer->SetLinearInterpolation(false);
-
-    controller_->GetScene().SetLayer(0, layer.release());
-    controller_->FitContent();
-  }
-
-
-  void SimpleViewerCore::Handle(const New::IObservable& observable,
-                                const DicomResourcesLoadedMessage& message)
-  {
-    if (message.GetResources()->GetSize() != 1)
-    {
-      throw Orthanc::OrthancException(Orthanc::ErrorCode_InternalError);
-    }
-
-    DicomInstanceParameters parameters(message.GetResources()->GetResource(0));
-    if (parameters.HasPixelSpacing())
-    {
-      /**
-       * TODO - Ultrasound (US) images store an equivalent to
-       * "PixelSpacing" in the "SequenceOfUltrasoundRegions"
-       * (0018,6011) sequence, cf. tags "PhysicalDeltaX" (0018,602c)
-       * and "PhysicalDeltaY" (0018,602e) => This would require
-       * parsing "message.GetResources()->GetSourceJson(0)"
-       * => cf. "DicomInstanceParameters::EnrichUsingDicomWeb()"
-       **/
-
-      // std::cout << message.GetResources()->GetSourceJson(0).toStyledString();
-
-      LOG(INFO) << "Using millimeters units, as the DICOM instance contains the PixelSpacing tag";
-      annotations_->SetUnits(Units_Millimeters);
-    }
-    else
-    {
-      LOG(INFO) << "Using pixels units, as the DICOM instance does *not* contain the PixelSpacing tag";
-      annotations_->SetUnits(Units_Pixels);
-    }
-
-    //message.GetResources()->GetResource(0).Print(stdout);
-
-    {
-      std::unique_ptr<IEnvironment::ILock> environmentLock(context_->GetEnvironment().AcquireLock());  // TODO Refactoring - Should already be locked
-
-      framesLoader_ = SeriesFramesLoader::Create(*context_, *message.GetResources());
-
-      //Register<FrameDecodedMessage>(*framesLoader_, &SimpleViewerCore::Handle);
-
-      //framesLoader_->TypedObservable<FrameDecodedMessage>::Register(shared_from_this());
-      New::IObservable::Bind<FrameDecodedMessage>(*framesLoader_, shared_from_this());
-
-      assert(message.HasUserPayload());
-
-      const Orthanc::SingleValueObject<unsigned int>& payload =
-        dynamic_cast<const Orthanc::SingleValueObject<unsigned int>&>(
-          message.GetUserPayload());
-
-      LOG(INFO) << "Loading pixel data of frame: " << payload.GetValue();
-      framesLoader_->ScheduleLoadFrame(
-        0, message.GetDicomSource(), payload.GetValue(),
-        message.GetDicomSource().GetQualityCount() - 1 /* download best quality available */,
-        NULL);
-    }
-  }
-
-
-  void SimpleViewerCore::RenderAnnotations()
-  {
-    annotations_->Render(controller_->GetScene());
-    controller_->InvalidateViewport();
-  }
-
-
-  void SimpleViewerCore::CreateComponents(const boost::shared_ptr<StoneApplication::Context>& context,
-                                          const boost::shared_ptr<ViewportController>& controller)
-  {
-    if (!context ||
-        !controller)
-    {
-      throw Orthanc::OrthancException(Orthanc::ErrorCode_BadSequenceOfCalls);
-    }
-
-    if (context_ ||
-        controller_ ||
-        annotations_)
-    {
-      throw Orthanc::OrthancException(Orthanc::ErrorCode_BadSequenceOfCalls);
-    }
-
-    context_ = context;
-    controller_ = controller;
-
-    dicomLoader_ = DicomResourcesLoader::Create(*context);
-
-    //Register<DicomResourcesLoadedMessage>(*dicomLoader_, &SimpleViewerCore::Handle);
-
-    //dicomLoader_->TypedObservable<DicomResourcesLoadedMessage>::Register(shared_from_this());
-    New::IObservable::Bind<DicomResourcesLoadedMessage>(*dicomLoader_, shared_from_this());
-
-    annotations_.reset(new AnnotationsSceneLayer(10));
-    annotations_->SetUnits(Units_Millimeters);
-    annotations_->SetActiveTool(AnnotationsSceneLayer::Tool_Edit);
-    annotations_->SetProbedLayer(0);
-
-    New::IObservable::Bind<AnnotationRemovedMessage>(*annotations_, shared_from_this());
-
-    controller_->SetUndoStack(boost::make_shared<UndoStack>());
-
-#if TEST_MEASURE_TOOLS == 1
-    {
-      boost::shared_ptr<LineMeasureTool> tool = OrthancStone::LineMeasureTool::Create(controller_);
-      tool->Enable();
-      tool->Set(OrthancStone::ScenePoint2D(200, 100),
-                OrthancStone::ScenePoint2D(100, 200));
-
-      controller_->AddMeasureTool(boost::dynamic_pointer_cast<MeasureTool>(tool));
-    }
-
-    {
-      boost::shared_ptr<AngleMeasureTool> tool = OrthancStone::AngleMeasureTool::Create(controller_);
-      tool->Enable();
-      tool->SetCenter(OrthancStone::ScenePoint2D(300, 300));
-      tool->SetSide1End(OrthancStone::ScenePoint2D(200, 400));
-      tool->SetSide2End(OrthancStone::ScenePoint2D(400, 400));
-
-      controller_->AddMeasureTool(boost::dynamic_pointer_cast<MeasureTool>(tool));
-    }
-#endif
-  }
-
-
   class SimpleViewerCore::Interactor : public IViewportInteractor
   {
   private:
@@ -317,16 +177,146 @@ namespace OrthancStone
   };
 
 
-  IViewportInteractor* SimpleViewerCore::CreateMouseInteractor()
+  void SimpleViewerCore::Handle(const New::IObservable& observable,
+                                const FrameDecodedMessage& message)
   {
-    if (annotations_.get() == NULL)
+    LOG(INFO) << "Frame decoded! "
+              << message.GetImage().GetWidth() << "x" << message.GetImage().GetHeight()
+              << " " << Orthanc::EnumerationToString(message.GetImage().GetFormat());
+
+    std::unique_ptr<TextureBaseSceneLayer> layer(
+      message.GetInstanceParameters().CreateTexture(message.GetImage()));
+    //layer->SetLinearInterpolation(true);
+    layer->SetLinearInterpolation(false);
+
+    controller_->GetScene().SetLayer(0, layer.release());
+    controller_->FitContent();
+  }
+
+
+  void SimpleViewerCore::Handle(const New::IObservable& observable,
+                                const DicomResourcesLoadedMessage& message)
+  {
+    if (message.GetResources()->GetSize() != 1)
     {
-      throw Orthanc::OrthancException(Orthanc::ErrorCode_BadSequenceOfCalls);
+      throw Orthanc::OrthancException(Orthanc::ErrorCode_InternalError);
+    }
+
+    DicomInstanceParameters parameters(message.GetResources()->GetResource(0));
+    if (parameters.HasPixelSpacing())
+    {
+      /**
+       * TODO - Ultrasound (US) images store an equivalent to
+       * "PixelSpacing" in the "SequenceOfUltrasoundRegions"
+       * (0018,6011) sequence, cf. tags "PhysicalDeltaX" (0018,602c)
+       * and "PhysicalDeltaY" (0018,602e) => This would require
+       * parsing "message.GetResources()->GetSourceJson(0)"
+       * => cf. "DicomInstanceParameters::EnrichUsingDicomWeb()"
+       **/
+
+      // std::cout << message.GetResources()->GetSourceJson(0).toStyledString();
+
+      LOG(INFO) << "Using millimeters units, as the DICOM instance contains the PixelSpacing tag";
+      annotations_->SetUnits(Units_Millimeters);
     }
     else
     {
-      return new Interactor(shared_from_this());
+      LOG(INFO) << "Using pixels units, as the DICOM instance does *not* contain the PixelSpacing tag";
+      annotations_->SetUnits(Units_Pixels);
     }
+
+    //message.GetResources()->GetResource(0).Print(stdout);
+
+    {
+      std::unique_ptr<IEnvironment::ILock> environmentLock(context_->GetEnvironment().AcquireLock());  // TODO Refactoring - Should already be locked
+
+      framesLoader_ = SeriesFramesLoader::Create(*context_, *message.GetResources());
+
+      //Register<FrameDecodedMessage>(*framesLoader_, &SimpleViewerCore::Handle);
+
+      //framesLoader_->TypedObservable<FrameDecodedMessage>::Register(shared_from_this());
+      New::IObservable::Bind<FrameDecodedMessage>(*framesLoader_, shared_from_this());
+
+      assert(message.HasUserPayload());
+
+      const Orthanc::SingleValueObject<unsigned int>& payload =
+        dynamic_cast<const Orthanc::SingleValueObject<unsigned int>&>(
+          message.GetUserPayload());
+
+      LOG(INFO) << "Loading pixel data of frame: " << payload.GetValue();
+      framesLoader_->ScheduleLoadFrame(
+        0, message.GetDicomSource(), payload.GetValue(),
+        message.GetDicomSource().GetQualityCount() - 1 /* download best quality available */,
+        NULL);
+    }
+  }
+
+
+  void SimpleViewerCore::RenderAnnotations()
+  {
+    annotations_->Render(controller_->GetScene());
+    controller_->InvalidateViewport();
+  }
+
+
+  void SimpleViewerCore::CreateComponents(const boost::shared_ptr<StoneApplication::Context>& context,
+                                          const boost::shared_ptr<ViewportController>& controller)
+  {
+    if (!context ||
+        !controller)
+    {
+      throw Orthanc::OrthancException(Orthanc::ErrorCode_BadSequenceOfCalls);
+    }
+
+    if (context_ ||
+        controller_ ||
+        annotations_)
+    {
+      throw Orthanc::OrthancException(Orthanc::ErrorCode_BadSequenceOfCalls);
+    }
+
+    context_ = context;
+    controller_ = controller;
+
+    dicomLoader_ = DicomResourcesLoader::Create(*context);
+
+    //Register<DicomResourcesLoadedMessage>(*dicomLoader_, &SimpleViewerCore::Handle);
+
+    //dicomLoader_->TypedObservable<DicomResourcesLoadedMessage>::Register(shared_from_this());
+    New::IObservable::Bind<DicomResourcesLoadedMessage>(*dicomLoader_, shared_from_this());
+
+    annotations_.reset(new AnnotationsSceneLayer(10));
+    annotations_->SetUnits(Units_Millimeters);
+    annotations_->SetActiveTool(AnnotationsSceneLayer::Tool_Edit);
+    annotations_->SetProbedLayer(0);
+
+    New::IObservable::Bind<AnnotationRemovedMessage>(*annotations_, shared_from_this());
+
+    controller_->SetUndoStack(boost::make_shared<UndoStack>());
+
+#if TEST_MEASURE_TOOLS == 1
+    {
+      boost::shared_ptr<LineMeasureTool> tool = OrthancStone::LineMeasureTool::Create(controller_);
+      tool->Enable();
+      tool->Set(OrthancStone::ScenePoint2D(200, 100),
+                OrthancStone::ScenePoint2D(100, 200));
+
+      controller_->AddMeasureTool(boost::dynamic_pointer_cast<MeasureTool>(tool));
+    }
+
+    {
+      boost::shared_ptr<AngleMeasureTool> tool = OrthancStone::AngleMeasureTool::Create(controller_);
+      tool->Enable();
+      tool->SetCenter(OrthancStone::ScenePoint2D(300, 300));
+      tool->SetSide1End(OrthancStone::ScenePoint2D(200, 400));
+      tool->SetSide2End(OrthancStone::ScenePoint2D(400, 400));
+
+      controller_->AddMeasureTool(boost::dynamic_pointer_cast<MeasureTool>(tool));
+    }
+#endif
+
+    assert(annotations_.get() != NULL);
+    controller_->AcquireInteractor(new Interactor(shared_from_this()));
   }
 
 

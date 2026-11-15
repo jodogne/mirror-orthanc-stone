@@ -108,12 +108,8 @@ namespace OrthancStone
 
     New::IObservable::Bind<DicomVolumeImage::GeometryReadyMessage>(*instanceLoader_, shared_from_this());
     New::IObservable::Bind<DicomVolumeImage::ContentUpdatedMessage>(*instanceLoader_, shared_from_this());
-  }
 
-
-  IViewportInteractor* VolumeViewerCore::CreateMouseInteractor()
-  {
-    return new DefaultViewportInteractor;
+    controller_->AcquireInteractor(new DefaultViewportInteractor);
   }
 
 

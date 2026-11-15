@@ -109,7 +109,11 @@ extern "C"
   {
     OrthancPlugins::SetGlobalContext(context);
 
-    OrthancStone::InitializeStone(context);
+#if ORTHANC_FRAMEWORK_VERSION_IS_ABOVE(1, 7, 2)
+    Orthanc::Logging::InitializePluginContext(context);
+#else
+    Orthanc::Logging::Initialize(context);
+#endif
 
     /* Check the version of the Orthanc core */
     if (OrthancPluginCheckVersion(context) == 0)
@@ -146,8 +150,8 @@ extern "C"
         ("/stone-rtviewer/RtViewerWasm.wasm", true);
 
       OrthancPlugins::RegisterRestCallback
-        <ServeEmbeddedFile<Orthanc::EmbeddedResources::RT_VIEWER_WASM_APP_JS> >
-        ("/stone-rtviewer/RtViewerWasmApp.js", true);
+        <ServeEmbeddedFile<Orthanc::EmbeddedResources::RT_VIEWER_APP_JS> >
+        ("/stone-rtviewer/app.js", true);
 
       OrthancPlugins::RegisterRestCallback
         <ServeEmbeddedFile<Orthanc::EmbeddedResources::RT_VIEWER_INDEX_HTML> >

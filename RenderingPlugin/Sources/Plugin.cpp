@@ -23,6 +23,7 @@
 #include "OrthancPluginConnection.h"
 #include "../Resources/Orthanc/Plugins/OrthancPluginCppWrapper.h"
 
+#include "../../OrthancStone/Sources/StoneInitialization.h"
 #include "../../OrthancStone/Sources/Toolbox/AffineTransform2D.h"
 #include "../../OrthancStone/Sources/Toolbox/DicomInstanceParameters.h"
 #include "../../OrthancStone/Sources/Toolbox/DicomStructureSet.h"
@@ -959,7 +960,7 @@ extern "C"
   {
     OrthancPlugins::SetGlobalContext(context);
 
-    OrthancStone::InitializeStone(context);
+    OrthancStone::StoneInitialize(context);
 
     /* Check the version of the Orthanc core */
     if (OrthancPluginCheckVersion(context) == 0)
@@ -996,6 +997,7 @@ extern "C"
 
   ORTHANC_PLUGINS_API void OrthancPluginFinalize()
   {
+    OrthancStone::StoneFinalize();
   }
 
 

@@ -160,6 +160,7 @@ namespace OrthancStone
     threadPool_.SetThreadsCount(configuration.GetOracleThreadsCount());
     threadPool_.SetDequeueTimeout(configuration.GetWorkersTimeResolution());
 
+#if ORTHANC_ENABLE_DCMTK == 1
     if (configuration.GetDicomCacheSize() == 0)
     {
       LOG(WARNING) << "The DICOM cache is disabled";
@@ -170,6 +171,7 @@ namespace OrthancStone
                 << (static_cast<float>(configuration.GetDicomCacheSize()) / static_cast<float>(1024 * 1024)) << " MB";
       dicomCache_.reset(new ParsedDicomCache(configuration.GetDicomCacheSize()));
     }
+#endif
   }
 
 

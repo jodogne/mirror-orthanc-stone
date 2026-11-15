@@ -112,7 +112,7 @@ EmbedResources(
   # RtViewer individual files
   RT_VIEWER_WASM_JS      ${ORTHANC_STONE_BINARIES}/RtViewerWasm.js
   RT_VIEWER_WASM         ${ORTHANC_STONE_BINARIES}/RtViewerWasm.wasm
-  RT_VIEWER_WASM_APP_JS  ${ORTHANC_STONE_BINARIES}/RtViewerWasmApp.js
+  RT_VIEWER_APP_JS       ${ORTHANC_STONE_BINARIES}/app.js
   RT_VIEWER_INDEX_HTML   ${ORTHANC_STONE_BINARIES}/index.html
   )
 

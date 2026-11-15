@@ -135,7 +135,7 @@ install(
 # ---------------------------------------------------------------
 install(
   FILES
-  ${CMAKE_SOURCE_DIR}/RtViewer/RtViewerWasmApp.js
+  ${CMAKE_SOURCE_DIR}/RtViewer/app.js
   ${CMAKE_SOURCE_DIR}/RtViewer/index.html
   ${CMAKE_CURRENT_BINARY_DIR}/RtViewerWasm.wasm
   DESTINATION ${ORTHANC_STONE_INSTALL_PREFIX}/RtViewer/
@@ -181,7 +181,7 @@ install(
 # ---------------------------------------------------------------
 install(
   FILES
-  ${CMAKE_SOURCE_DIR}/SingleFrameViewer/SingleFrameViewerApp.js
+  ${CMAKE_SOURCE_DIR}/SingleFrameViewer/app.js
   ${CMAKE_SOURCE_DIR}/SingleFrameViewer/index.html
   ${CMAKE_CURRENT_BINARY_DIR}/SingleFrameViewerWasm.wasm
   DESTINATION ${ORTHANC_STONE_INSTALL_PREFIX}/SingleFrameViewer/

@@ -205,8 +205,8 @@ extern "C"
       configuration.SetDicomCacheSize(128 * 1024 * 1024);  // 128MB
 
       boost::shared_ptr<OrthancStone::ISingleViewportApplicationCore> core;
-      core.reset(new OrthancStone::SimpleViewerCore);
-      //core.reset(new OrthancStone::VolumeViewerCore);
+      //core.reset(new OrthancStone::SimpleViewerCore);
+      core.reset(new OrthancStone::VolumeViewerCore);
       application_.reset(new OrthancStone::SingleViewportWebAssemblyApplication(configuration, core));
 
 #if 0
@@ -237,9 +237,9 @@ extern "C"
   {
     try
     {
-      //dynamic_cast<OrthancStone::VolumeViewerCore&>(*application_->GetCore()).LoadSeriesFromOrthanc(OrthancStone::VolumeProjection_Coronal, "a7e40137-e4b37f56-14ce875b-9a81702d-eac823bf");
+      dynamic_cast<OrthancStone::VolumeViewerCore&>(*application_->GetCore()).LoadSeriesFromOrthanc(OrthancStone::VolumeProjection_Coronal, "a7e40137-e4b37f56-14ce875b-9a81702d-eac823bf");
 
-      dynamic_cast<OrthancStone::SimpleViewerCore&>(*application_->GetCore()).LoadFrameFromOrthanc(instance, frame);
+      //dynamic_cast<OrthancStone::SimpleViewerCore&>(*application_->GetCore()).LoadFrameFromOrthanc(instance, frame);
     }
     EXTERN_CATCH_EXCEPTIONS;
   }
